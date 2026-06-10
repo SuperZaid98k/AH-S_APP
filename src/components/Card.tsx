@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
-import { COLORS, BORDER_RADIUS, SHADOWS, SPACING } from '../styles/theme';
+import { View, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
+import { useTheme, BORDER_RADIUS, SPACING } from '../styles/theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -15,14 +15,41 @@ export const Card: React.FC<CardProps> = ({
   onPress,
   variant = 'elevated',
 }) => {
-  const cardStyle: ViewStyle[] = [styles.card];
+  const { colors, isDarkMode } = useTheme();
+
+  const cardStyle: ViewStyle[] = [
+    {
+      backgroundColor: colors.cardBg,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.lg,
+    }
+  ];
 
   if (variant === 'elevated') {
-    cardStyle.push(styles.elevated);
+    cardStyle.push({
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.22,
+      shadowRadius: 3.0,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(226, 232, 240, 0.6)',
+    });
   } else if (variant === 'premium') {
-    cardStyle.push(styles.premium);
+    cardStyle.push({
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8.0,
+      elevation: 8,
+      borderWidth: 1,
+      borderColor: 'rgba(217, 119, 6, 0.25)', // Subtle gold border
+    });
   } else {
-    cardStyle.push(styles.flat);
+    cardStyle.push({
+      borderWidth: 1,
+      borderColor: colors.border,
+    });
   }
 
   if (onPress) {
@@ -39,25 +66,3 @@ export const Card: React.FC<CardProps> = ({
 
   return <View style={[cardStyle, style]}>{children}</View>;
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.lg,
-  },
-  flat: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  elevated: {
-    ...SHADOWS.md,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.6)',
-  },
-  premium: {
-    ...SHADOWS.premium,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 119, 6, 0.15)', // Subtle gold border
-  },
-});

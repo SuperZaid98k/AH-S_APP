@@ -15,7 +15,7 @@ import { db } from '../api/supabase';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../styles/theme';
+import { useTheme, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../styles/theme';
 
 interface Customer {
   id?: string;
@@ -25,6 +25,7 @@ interface Customer {
 }
 
 export const CustomerManagementScreen = () => {
+  const { colors, isDarkMode } = useTheme();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
@@ -117,9 +118,9 @@ export const CustomerManagementScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Search Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <Input
           value={search}
           onChangeText={setSearch}
@@ -129,10 +130,10 @@ export const CustomerManagementScreen = () => {
           containerStyle={styles.searchBar}
         />
         <TouchableOpacity
-          style={styles.addBtn}
+          style={[styles.addBtn, { backgroundColor: colors.secondary }]}
           onPress={() => openForm(null)}
         >
-          <Ionicons name="person-add" size={20} color={COLORS.white} />
+          <Ionicons name="person-add" size={20} color="#000000" />
         </TouchableOpacity>
       </View>
 
@@ -145,8 +146,8 @@ export const CustomerManagementScreen = () => {
         onRefresh={fetchCustomers}
         ListEmptyComponent={
           <Card style={styles.emptyCard}>
-            <Ionicons name="people-outline" size={48} color={COLORS.textMuted} />
-            <Text style={styles.emptyText}>No customers found.</Text>
+            <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No customers found.</Text>
           </Card>
         }
         renderItem={({ item }) => (
@@ -155,25 +156,29 @@ export const CustomerManagementScreen = () => {
             onPress={() => openForm(item)}
           >
             <View style={styles.cardHeader}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+              <View style={[styles.avatar, { backgroundColor: isDarkMode ? '#333' : 'rgba(30, 41, 59, 0.08)' }]}>
+                <Text style={[styles.avatarText, { color: colors.secondary }]}>
+                  {item.name.charAt(0).toUpperCase()}
+                </Text>
               </View>
               <View style={styles.meta}>
-                <Text style={styles.customerName}>{item.name}</Text>
+                <Text style={[styles.customerName, { color: colors.text }]}>{item.name}</Text>
                 {item.phone ? (
                   <View style={styles.infoRow}>
-                    <Ionicons name="call-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={styles.infoText}>{item.phone}</Text>
+                    <Ionicons name="call-outline" size={13} color={colors.textMuted} />
+                    <Text style={[styles.infoText, { color: colors.textMuted }]}>{item.phone}</Text>
                   </View>
                 ) : null}
                 {item.address ? (
                   <View style={styles.infoRow}>
-                    <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={styles.infoText} numberOfLines={1}>{item.address}</Text>
+                    <Ionicons name="location-outline" size={13} color={colors.textMuted} />
+                    <Text style={[styles.infoText, { color: colors.textMuted }]} numberOfLines={1}>
+                      {item.address}
+                    </Text>
                   </View>
                 ) : null}
               </View>
-              <Ionicons name="create-outline" size={20} color={COLORS.primary} style={styles.editIcon} />
+              <Ionicons name="create-outline" size={20} color={colors.secondary} style={styles.editIcon} />
             </View>
           </Card>
         )}
@@ -190,17 +195,17 @@ export const CustomerManagementScreen = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
                 {editingCustomer ? 'Update Customer' : 'Add New Customer'}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={COLORS.primary} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            {formError ? <Text style={styles.modalError}>{formError}</Text> : null}
+            {formError ? <Text style={[styles.modalError, { color: colors.danger }]}>{formError}</Text> : null}
 
             <Input
               label="Customer / Business Name"
@@ -250,16 +255,13 @@ export const CustomerManagementScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
-    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
     gap: SPACING.md,
   },
   searchBar: {
@@ -270,11 +272,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
-    ...SHADOWS.sm,
   },
   listContainer: {
     padding: SPACING.lg,
@@ -290,7 +290,6 @@ const styles = StyleSheet.create({
   },
   customerCard: {
     marginBottom: SPACING.md,
-    backgroundColor: COLORS.white,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -300,7 +299,6 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: 'rgba(30, 41, 59, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
@@ -308,14 +306,12 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.primary,
   },
   meta: {
     flex: 1,
   },
   customerName: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
     fontWeight: '700',
     marginBottom: 2,
   },
@@ -327,7 +323,6 @@ const styles = StyleSheet.create({
   infoText: {
     ...TYPOGRAPHY.caption,
     marginLeft: SPACING.xs,
-    color: COLORS.textMuted,
   },
   editIcon: {
     padding: SPACING.sm,
@@ -338,12 +333,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: COLORS.white,
     borderTopLeftRadius: BORDER_RADIUS.lg,
     borderTopRightRadius: BORDER_RADIUS.lg,
     padding: SPACING.xl,
     paddingBottom: Platform.OS === 'ios' ? SPACING.xxxl : SPACING.xl,
-    ...SHADOWS.premium,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -354,10 +352,8 @@ const styles = StyleSheet.create({
   modalTitle: {
     ...TYPOGRAPHY.h2,
     fontWeight: '700',
-    color: COLORS.primary,
   },
   modalError: {
-    color: COLORS.danger,
     fontSize: 13,
     marginBottom: SPACING.md,
     fontWeight: '500',

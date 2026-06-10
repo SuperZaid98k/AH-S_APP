@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { db } from '../api/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../styles/theme';
+import { useTheme, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../styles/theme';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import { pdfGenerator } from '../utils/pdfGenerator';
 
@@ -33,6 +33,7 @@ export const InvoiceDetailsScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { invoiceId } = route.params;
   const { userProfile } = useAuth();
+  const { colors, isDarkMode } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
@@ -66,13 +67,17 @@ export const InvoiceDetailsScreen = () => {
     setSavingPdf(true);
     try {
       const { uri } = await pdfGenerator.generateInvoicePdf(invoice);
-      Alert.alert('PDF Saved', `Invoice PDF generated successfully!\nPath: ${uri}`);
+      const savedPath = await pdfGenerator.saveInvoicePdfToCustomLocation(uri, invoice.invoice_number);
+      if (savedPath) {
+        Alert.alert('PDF Saved', `Invoice PDF saved successfully!`);
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to compile PDF.');
+      Alert.alert('Error', e.message || 'Failed to save PDF.');
     } finally {
       setSavingPdf(false);
     }
   };
+
 
   const handleSharePdf = async () => {
     if (!invoice) return;
@@ -89,18 +94,18 @@ export const InvoiceDetailsScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Fetching Invoice Details...</Text>
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Fetching Invoice Details...</Text>
       </SafeAreaView>
     );
   }
 
   if (!invoice) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <Ionicons name="alert-circle-outline" size={48} color={COLORS.danger} />
-        <Text style={styles.loadingText}>Invoice not found.</Text>
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.danger} />
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Invoice not found.</Text>
       </SafeAreaView>
     );
   }
@@ -113,33 +118,36 @@ export const InvoiceDetailsScreen = () => {
   const hasGst = invoice.gst_enabled && invoice.gst_amount > 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header Admin Edit */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Invoice Detail</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Invoice Detail</Text>
         
         {userProfile?.role === 'admin' ? (
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateInvoice', { editInvoiceId: invoice.id })}
-            style={styles.editBtn}
+            style={[styles.editBtn, { backgroundColor: colors.secondary }]}
           >
-            <Ionicons name="pencil" size={20} color={COLORS.white} />
+            <Ionicons name="pencil" size={16} color="#000000" />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
         ) : (
-          <View style={{ width: 44 }} />
+          <View style={{ width: 56 }} />
         )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollBody}>
         {/* Invoice Meta Banner */}
-        <Card style={styles.bannerCard} variant="premium">
+        <Card 
+          style={[styles.bannerCard, { backgroundColor: isDarkMode ? colors.cardBg : '#1E293B' }]} 
+          variant="premium"
+        >
           <View style={styles.bannerRow}>
             <View>
               <Text style={styles.bannerMetaLabel}>INVOICE NUMBER</Text>
@@ -150,38 +158,38 @@ export const InvoiceDetailsScreen = () => {
               <Text style={styles.bannerTotal}>{formatCurrency(invoice.total)}</Text>
             </View>
           </View>
-          <View style={styles.bannerDivider} />
+          <View style={[styles.bannerDivider, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)' }]} />
           <View style={styles.bannerFooter}>
-            <Text style={styles.bannerFooterText}>Date: {formatDate(invoice.date)}</Text>
-            <Text style={styles.bannerFooterText}>
+            <Text style={[styles.bannerFooterText, { color: colors.textMuted }]}>Date: {formatDate(invoice.date)}</Text>
+            <Text style={[styles.bannerFooterText, { color: colors.textMuted }]}>
               Billed By: {invoice.created_by === 'usr_admin' || invoice.created_by?.includes('admin') ? 'Admin Desk' : 'Sales Desk'}
             </Text>
           </View>
         </Card>
 
         {/* Customer Box */}
-        <Text style={styles.sectionTitle}>Billed To</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Billed To</Text>
         <Card style={styles.infoCard}>
-          <Text style={styles.custName}>{invoice.customer_name}</Text>
+          <Text style={[styles.custName, { color: colors.text }]}>{invoice.customer_name}</Text>
           {invoice.customer_phone ? (
             <View style={styles.infoDetailRow}>
-              <Ionicons name="call-outline" size={14} color={COLORS.textMuted} />
-              <Text style={styles.infoDetailText}>{invoice.customer_phone}</Text>
+              <Ionicons name="call-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.infoDetailText, { color: colors.textMuted }]}>{invoice.customer_phone}</Text>
             </View>
           ) : null}
           {invoice.customer_address ? (
             <View style={styles.infoDetailRow}>
-              <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
-              <Text style={styles.infoDetailText}>{invoice.customer_address}</Text>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.infoDetailText, { color: colors.textMuted }]}>{invoice.customer_address}</Text>
             </View>
           ) : null}
         </Card>
 
         {/* Invoice items table */}
-        <Text style={styles.sectionTitle}>Billed Products</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Billed Products</Text>
         <Card style={styles.itemsCard}>
           {/* Table Headers */}
-          <View style={styles.tableHeader}>
+          <View style={[styles.tableHeader, { backgroundColor: isDarkMode ? '#222' : '#1E293B' }]}>
             <Text style={[styles.thText, { flex: 2 }]}>Product Description</Text>
             {hasBrand ? <Text style={[styles.thText, { flex: 1 }]}>Brand</Text> : null}
             <Text style={[styles.thText, { flex: 0.5, textAlign: 'center' }]}>Qty</Text>
@@ -191,22 +199,22 @@ export const InvoiceDetailsScreen = () => {
           
           {/* Table Rows */}
           {invoice.invoice_items?.map((item: any, idx: number) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.tdText, styles.tdName, { flex: 2 }]} numberOfLines={2}>
+            <View key={idx} style={[styles.tableRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.tdText, styles.tdName, { flex: 2, color: isDarkMode ? colors.white : '#1E293B' }]} numberOfLines={2}>
                 {item.product_name}
               </Text>
               {hasBrand ? (
-                <Text style={[styles.tdText, { flex: 1 }]} numberOfLines={1}>
+                <Text style={[styles.tdText, { flex: 1, color: colors.text }]} numberOfLines={1}>
                   {item.brand || '-'}
                 </Text>
               ) : null}
-              <Text style={[styles.tdText, { flex: 0.5, textAlign: 'center' }]}>
+              <Text style={[styles.tdText, { flex: 0.5, textAlign: 'center', color: colors.text }]}>
                 {item.quantity}
               </Text>
-              <Text style={[styles.tdText, { flex: 1, textAlign: 'right' }]}>
+              <Text style={[styles.tdText, { flex: 1, textAlign: 'right', color: colors.text }]}>
                 {formatCurrency(item.price)}
               </Text>
-              <Text style={[styles.tdText, styles.tdTotal, { flex: 1.2, textAlign: 'right' }]}>
+              <Text style={[styles.tdText, styles.tdTotal, { flex: 1.2, textAlign: 'right', color: colors.text }]}>
                 {formatCurrency(item.total)}
               </Text>
             </View>
@@ -217,13 +225,13 @@ export const InvoiceDetailsScreen = () => {
         <Card style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(invoice.subtotal)}</Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>{formatCurrency(invoice.subtotal)}</Text>
           </View>
 
           {hasDiscount ? (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Discount</Text>
-              <Text style={[styles.summaryValue, { color: COLORS.danger }]}>
+              <Text style={[styles.summaryValue, { color: colors.danger }]}>
                 -{formatCurrency(invoice.discount)}
               </Text>
             </View>
@@ -231,13 +239,13 @@ export const InvoiceDetailsScreen = () => {
 
           {hasGst ? (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>GST (${invoice.gst_rate}%)</Text>
-              <Text style={styles.summaryValue}>+{formatCurrency(invoice.gst_amount)}</Text>
+              <Text style={styles.summaryLabel}>GST ({invoice.gst_rate}%)</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>+{formatCurrency(invoice.gst_amount)}</Text>
             </View>
           ) : null}
 
-          <View style={[styles.summaryRow, styles.grandRow]}>
-            <Text style={styles.grandLabel}>Net Payable Amount</Text>
+          <View style={[styles.summaryRow, styles.grandRow, { borderTopColor: colors.border }]}>
+            <Text style={[styles.grandLabel, { color: colors.text }]}>Net Payable Amount</Text>
             <Text style={styles.grandValue}>{formatCurrency(invoice.total)}</Text>
           </View>
         </Card>
@@ -251,6 +259,7 @@ export const InvoiceDetailsScreen = () => {
             onPress={handleSharePdf}
             loading={sharing}
             style={[styles.actionBtn, { backgroundColor: '#25D366' }]} // WhatsApp Green override
+            textStyle={{ color: '#FFFFFF' }}
           />
           <Button
             title="Save PDF / Print"
@@ -269,7 +278,6 @@ export const InvoiceDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   center: {
     justifyContent: 'center',
@@ -285,9 +293,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   backBtn: {
     width: 44,
@@ -299,21 +305,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...TYPOGRAPHY.h2,
     fontWeight: '700',
-    color: COLORS.primary,
   },
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.secondary,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
     borderRadius: BORDER_RADIUS.sm,
-    ...SHADOWS.sm,
   },
   editBtnText: {
     fontSize: 12,
-    color: COLORS.white,
-    fontWeight: '700',
+    color: '#000000',
+    fontWeight: '800',
     marginLeft: 4,
   },
   scrollBody: {
@@ -321,16 +324,16 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.lg,
     marginBottom: SPACING.sm,
-    fontWeight: '700',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   bannerCard: {
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.md,
-    backgroundColor: COLORS.primary,
   },
   bannerRow: {
     flexDirection: 'row',
@@ -346,18 +349,17 @@ const styles = StyleSheet.create({
   bannerInvoiceNum: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.secondary,
+    color: '#F59E0B',
     marginTop: 2,
   },
   bannerTotal: {
     fontSize: 20,
     fontWeight: '800',
-    color: COLORS.white,
+    color: '#FFFFFF',
     marginTop: 2,
   },
   bannerDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginVertical: SPACING.md,
   },
   bannerFooter: {
@@ -366,15 +368,12 @@ const styles = StyleSheet.create({
   },
   bannerFooterText: {
     fontSize: 11,
-    color: COLORS.textMuted,
   },
   infoCard: {
     marginHorizontal: SPACING.lg,
-    backgroundColor: COLORS.white,
   },
   custName: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
     fontWeight: '700',
     marginBottom: SPACING.xs,
   },
@@ -386,24 +385,21 @@ const styles = StyleSheet.create({
   infoDetailText: {
     ...TYPOGRAPHY.caption,
     marginLeft: SPACING.sm,
-    color: COLORS.textMuted,
   },
   itemsCard: {
     marginHorizontal: SPACING.lg,
     padding: 0,
-    backgroundColor: COLORS.white,
     overflow: 'hidden',
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
   },
   thText: {
     fontSize: 10,
     fontWeight: '700',
-    color: COLORS.white,
+    color: '#FFFFFF',
     textTransform: 'uppercase',
   },
   tableRow: {
@@ -412,22 +408,18 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   tdText: {
     fontSize: 12,
-    color: COLORS.text,
   },
   tdName: {
     fontWeight: '600',
-    color: COLORS.primary,
   },
   tdTotal: {
     fontWeight: '700',
   },
   summaryCard: {
     marginHorizontal: SPACING.lg,
-    backgroundColor: COLORS.white,
     marginTop: SPACING.md,
   },
   summaryRow: {
@@ -438,27 +430,22 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.textMuted,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.primary,
   },
   grandRow: {
     borderTopWidth: 1.5,
-    borderTopColor: COLORS.border,
     paddingTop: SPACING.md,
     marginTop: SPACING.sm,
   },
   grandLabel: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
     fontWeight: '800',
   },
   grandValue: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.secondary,
     fontWeight: '800',
   },
   actionsContainer: {

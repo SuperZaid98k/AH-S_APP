@@ -16,9 +16,14 @@ import { CreateInvoiceScreen } from './src/screens/CreateInvoiceScreen';
 import { InvoiceHistoryScreen } from './src/screens/InvoiceHistoryScreen';
 import { InvoiceDetailsScreen } from './src/screens/InvoiceDetailsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { NotepadScreen } from './src/screens/NotepadScreen';
+
 
 // Theme
 import { COLORS, TYPOGRAPHY } from './src/styles/theme';
+
+import { useTheme } from './src/styles/theme';
+import { useSettings } from './src/context/SettingsContext';
 
 type RootStackParamList = {
   Login: undefined;
@@ -28,12 +33,14 @@ type RootStackParamList = {
   InvoiceHistory: undefined;
   InvoiceDetails: { invoiceId: string };
   Settings: undefined;
+  Notepad: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const { colors } = useTheme();
 
   if (isLoading) {
     return null; // The framework will display native splash screen during boot load
@@ -43,18 +50,19 @@ const RootNavigator = () => {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: COLORS.white,
+          backgroundColor: colors.cardBg,
         },
         headerTitleStyle: {
           ...TYPOGRAPHY.h3,
           fontSize: 16,
           fontWeight: '700',
+          color: colors.text,
         },
-        headerTintColor: COLORS.primary,
+        headerTintColor: colors.secondary,
         headerTitleAlign: 'center',
         headerShadowVisible: false,
         contentStyle: {
-          backgroundColor: COLORS.background,
+          backgroundColor: colors.background,
         },
       }}
     >
@@ -98,9 +106,25 @@ const RootNavigator = () => {
             component={SettingsScreen}
             options={{ title: 'Application Settings' }}
           />
+          <Stack.Screen
+            name="Notepad"
+            component={NotepadScreen}
+            options={{ title: 'AH&S Notepad' }}
+          />
+
         </>
       )}
     </Stack.Navigator>
+  );
+};
+
+const AppContent = () => {
+  const { isDarkMode } = useSettings();
+  return (
+    <NavigationContainer>
+      <RootNavigator />
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+    </NavigationContainer>
   );
 };
 
@@ -109,10 +133,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <SettingsProvider>
-          <NavigationContainer>
-            <RootNavigator />
-            <StatusBar style="dark" />
-          </NavigationContainer>
+          <AppContent />
         </SettingsProvider>
       </AuthProvider>
     </SafeAreaProvider>

@@ -9,7 +9,7 @@ import {
   StyleProp,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY, SHADOWS } from '../styles/theme';
+import { useTheme, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../styles/theme';
 
 interface ButtonProps {
   title: string;
@@ -32,34 +32,71 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const { colors, isDarkMode } = useTheme();
   const isOutline = variant === 'outline';
   
-  let buttonStyle: ViewStyle[] = [styles.button];
-  let fontStyle: TextStyle[] = [styles.text];
+  // Dynamic styling maps based on active colors
+  const buttonVariantStyles: Record<string, ViewStyle> = {
+    primary: {
+      backgroundColor: colors.primary,
+    },
+    secondary: {
+      backgroundColor: colors.secondary,
+    },
+    outline: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: colors.secondary, // Amber outline for a gold-themed look
+    },
+    danger: {
+      backgroundColor: colors.danger,
+    },
+  };
 
-  // Apply Variant Styles
-  switch (variant) {
-    case 'primary':
-      buttonStyle.push(styles.primaryButton);
-      fontStyle.push(styles.primaryText);
-      break;
-    case 'secondary':
-      buttonStyle.push(styles.secondaryButton);
-      fontStyle.push(styles.secondaryText);
-      break;
-    case 'outline':
-      buttonStyle.push(styles.outlineButton);
-      fontStyle.push(styles.outlineText);
-      break;
-    case 'danger':
-      buttonStyle.push(styles.dangerButton);
-      fontStyle.push(styles.dangerText);
-      break;
+  const textVariantStyles: Record<string, TextStyle> = {
+    primary: {
+      color: isDarkMode ? colors.black : colors.white, // In dark mode, white background primary buttons have black text
+    },
+    secondary: {
+      color: colors.white,
+    },
+    outline: {
+      color: colors.secondary,
+    },
+    danger: {
+      color: colors.white,
+    },
+  };
+
+  const disabledButtonStyle: ViewStyle = {
+    backgroundColor: isDarkMode ? '#2D3748' : colors.border,
+    borderColor: isDarkMode ? '#2D3748' : colors.border,
+    shadowOpacity: 0,
+    elevation: 0,
+  };
+
+  let buttonStyle: StyleProp<ViewStyle> = [
+    styles.button,
+    buttonVariantStyles[variant],
+  ];
+  
+  let fontStyle: StyleProp<TextStyle> = [
+    styles.text,
+    textVariantStyles[variant],
+  ];
+
+  if (disabled || loading) {
+    buttonStyle.push(disabledButtonStyle);
   }
 
-  // Apply State Styles
-  if (disabled || loading) {
-    buttonStyle.push(styles.disabledButton);
+  // Determine active icon color
+  let activeIconColor = colors.white;
+  if (disabled) {
+    activeIconColor = colors.textMuted;
+  } else if (isOutline) {
+    activeIconColor = colors.secondary;
+  } else if (variant === 'primary' && isDarkMode) {
+    activeIconColor = colors.black;
   }
 
   return (
@@ -70,20 +107,14 @@ export const Button: React.FC<ButtonProps> = ({
       style={[buttonStyle, style]}
     >
       {loading ? (
-        <ActivityIndicator color={isOutline ? COLORS.primary : COLORS.white} size="small" />
+        <ActivityIndicator color={isOutline ? colors.secondary : activeIconColor} size="small" />
       ) : (
         <>
           {icon && (
             <Ionicons
               name={icon}
               size={18}
-              color={
-                disabled
-                  ? COLORS.textMuted
-                  : isOutline
-                  ? COLORS.primary
-                  : COLORS.white
-              }
+              color={activeIconColor}
               style={styles.icon}
             />
           )}
@@ -102,48 +133,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
-    ...SHADOWS.sm,
-  },
-  primaryButton: {
-    backgroundColor: COLORS.primary,
-  },
-  secondaryButton: {
-    backgroundColor: COLORS.secondary,
-  },
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  dangerButton: {
-    backgroundColor: COLORS.danger,
-  },
-  disabledButton: {
-    backgroundColor: COLORS.border,
-    borderColor: COLORS.border,
-    shadowOpacity: 0,
-    elevation: 0,
+    // Dynamic shadow can be added if needed, kept basic here
   },
   text: {
     ...TYPOGRAPHY.h3,
     fontWeight: '600',
-  },
-  primaryText: {
-    color: COLORS.white,
-  },
-  secondaryText: {
-    color: COLORS.white,
-  },
-  outlineText: {
-    color: COLORS.primary,
-  },
-  dangerText: {
-    color: COLORS.white,
-  },
-  disabledText: {
-    color: COLORS.textMuted,
   },
   icon: {
     marginRight: SPACING.sm,

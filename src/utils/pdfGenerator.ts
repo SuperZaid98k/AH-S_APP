@@ -1,7 +1,9 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { formatCurrency, formatDate } from './helpers';
+
 
 interface InvoiceItem {
   product_name: string;
@@ -410,4 +412,57 @@ export const pdfGenerator = {
       return false;
     }
   },
+
+  /**
+   * Prompts the user to choose a directory on Android, then saves the file.
+   * On iOS, uses Share sheet (which includes Save to Files) to save to location.
+   */
+  async saveInvoicePdfToCustomLocation(tempUri: string, invoiceNumber: string): Promise<string | null> {
+    try {
+      const cleanInvoiceNumber = invoiceNumber.replace(/[^a-zA-Z0-9-]/g, '_');
+      const fileName = `${cleanInvoiceNumber}`; // SAF createFileAsync appends mime type extension or handles it
+
+      if (Platform.OS === 'android') {
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permissions.granted) {
+          throw new Error('Directory permission not granted. Cannot save PDF.');
+        }
+
+        // Android createFileAsync: takes folderUri, filename (without extension usually, but safe to supply name), mimeType
+        const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          fileName,
+          'application/pdf'
+        );
+
+        const base64Content = await FileSystem.readAsStringAsync(tempUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        await FileSystem.writeAsStringAsync(fileUri, base64Content, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        return fileUri;
+      } else {
+        // iOS or other - copy to local doc dir first and share
+        const destinationUri = `${FileSystem.documentDirectory}${cleanInvoiceNumber}.pdf`;
+        await FileSystem.copyAsync({
+          from: tempUri,
+          to: destinationUri,
+        });
+
+        await Sharing.shareAsync(destinationUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Save Invoice ${invoiceNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+        return destinationUri;
+      }
+    } catch (error) {
+      console.error('Error saving PDF to custom location:', error);
+      throw error;
+    }
+  },
 };
+

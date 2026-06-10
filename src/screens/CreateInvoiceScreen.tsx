@@ -24,7 +24,7 @@ import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { Toggle } from '../components/Toggle';
 import { InvoiceItemRow } from '../components/InvoiceItemRow';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../styles/theme';
+import { useTheme, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../styles/theme';
 import { calculateInvoiceTotals, formatCurrency } from '../utils/helpers';
 
 type RootStackParamList = {
@@ -50,6 +50,8 @@ export const CreateInvoiceScreen = () => {
   const route = useRoute<CreateInvoiceRouteProp>();
   const editInvoiceId = route.params?.editInvoiceId;
   const { userProfile } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
 
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(false);
@@ -68,7 +70,6 @@ export const CreateInvoiceScreen = () => {
 
   // Invoice Items State
   const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [itemModalVisible, setItemModalVisible] = useState(false);
   
   // Manual Product Form States
   const [manualProdName, setManualProdName] = useState('');
@@ -90,6 +91,11 @@ export const CreateInvoiceScreen = () => {
     gstToggled,
     gstToggled ? selectedGstRate : 0
   );
+
+  const liveQty = parseInt(manualProdQty || '0', 10);
+  const liveRate = parseFloat(manualProdRate || '0');
+  const liveRowTotal = !isNaN(liveQty) && !isNaN(liveRate) && liveQty > 0 && liveRate > 0 ? liveQty * liveRate : 0;
+
 
   // Initialize Invoice details (support loading existing details for editing)
   useEffect(() => {
@@ -188,11 +194,6 @@ export const CreateInvoiceScreen = () => {
   };
 
   const handleAddItem = () => {
-    if (!manualProdName.trim()) {
-      Alert.alert('Validation Error', 'Product description name is required.');
-      return;
-    }
-
     const qty = parseInt(manualProdQty, 10);
     const rate = parseFloat(manualProdRate);
 
@@ -202,13 +203,16 @@ export const CreateInvoiceScreen = () => {
     }
 
     if (isNaN(rate) || rate < 0) {
-      Alert.alert('Validation Error', 'Unit rate price must be greater than or equal to zero.');
+      Alert.alert('Validation Error', 'Price (per unit) must be greater than or equal to zero.');
       return;
     }
 
+    // Optional name: default to 'General Item' if empty
+    const name = manualProdName.trim() || 'General Item';
+
     const newItem: InvoiceItem = {
       product_id: '',
-      product_name: manualProdName.trim(),
+      product_name: name,
       brand: manualProdBrand.trim() || undefined,
       quantity: qty,
       price: rate,
@@ -216,9 +220,8 @@ export const CreateInvoiceScreen = () => {
     };
 
     setItems([...items, newItem]);
-    setItemModalVisible(false);
     
-    // Clear item inputs
+    // Clear item inputs for next addition
     setManualProdName('');
     setManualProdBrand('');
     setManualProdQty('1');
@@ -290,8 +293,8 @@ export const CreateInvoiceScreen = () => {
   if (initLoading) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={{ ...TYPOGRAPHY.bodyMuted, marginTop: SPACING.md }}>Loading Invoice Data...</Text>
+        <ActivityIndicator size="large" color={colors.secondary} />
+        <Text style={{ ...TYPOGRAPHY.bodyMuted, marginTop: SPACING.md, color: colors.textMuted }}>Loading Invoice Data...</Text>
       </SafeAreaView>
     );
   }
@@ -319,7 +322,7 @@ export const CreateInvoiceScreen = () => {
           {selectedCustomer ? (
             <View style={styles.selectedCustContainer}>
               <View style={styles.selectedCustDetails}>
-                <Ionicons name="business-outline" size={20} color={COLORS.secondary} />
+                <Ionicons name="business-outline" size={20} color={colors.secondary} />
                 <View style={{ marginLeft: SPACING.sm, flex: 1 }}>
                   <Text style={styles.selectedCustName}>{custName}</Text>
                   {custPhone ? <Text style={styles.selectedCustSub}>{custPhone}</Text> : null}
@@ -327,7 +330,7 @@ export const CreateInvoiceScreen = () => {
                 </View>
               </View>
               <TouchableOpacity onPress={handleClearCustomer} style={styles.clearCustBtn}>
-                <Ionicons name="close-circle" size={22} color={COLORS.danger} />
+                <Ionicons name="close-circle" size={22} color={colors.danger} />
               </TouchableOpacity>
             </View>
           ) : (
@@ -375,29 +378,12 @@ export const CreateInvoiceScreen = () => {
         </Card>
 
         {/* Invoice Items Block */}
-        <View style={styles.itemHeaderRow}>
-          <Text style={styles.sectionTitle}>Selected Products</Text>
-          <TouchableOpacity
-            style={styles.addItemHeaderBtn}
-            onPress={() => setItemModalVisible(true)}
-          >
-            <Ionicons name="add" size={14} color={COLORS.secondary} />
-            <Text style={styles.addItemHeaderBtnText}>Add Product</Text>
-          </TouchableOpacity>
-        </View>
-
+        <Text style={styles.sectionTitle}>Selected Products</Text>
         <Card style={styles.itemsCard}>
           {items.length === 0 ? (
             <View style={styles.emptyItemsBox}>
-              <Ionicons name="basket-outline" size={36} color={COLORS.textMuted} />
+              <Ionicons name="basket-outline" size={36} color={colors.textMuted} />
               <Text style={styles.emptyItemsText}>No products added to the invoice yet.</Text>
-              <Button
-                title="Add Product Item"
-                variant="outline"
-                icon="add"
-                onPress={() => setItemModalVisible(true)}
-                style={{ marginTop: SPACING.md }}
-              />
             </View>
           ) : (
             <View>
@@ -410,6 +396,63 @@ export const CreateInvoiceScreen = () => {
               ))}
             </View>
           )}
+        </Card>
+
+        {/* Direct Product Entry Form */}
+        <Text style={styles.sectionTitle}>Add Product Item</Text>
+        <Card style={styles.customerCard}>
+          <Input
+            label="Product Name / Description (Optional)"
+            value={manualProdName}
+            onChangeText={setManualProdName}
+            placeholder="e.g. Cotton Lungi (blank defaults to General Item)"
+            icon="cube-outline"
+          />
+
+          <Input
+            label="Brand (Optional)"
+            value={manualProdBrand}
+            onChangeText={setManualProdBrand}
+            placeholder="e.g. AH&S Special"
+            icon="ribbon-outline"
+          />
+
+          <View style={{ flexDirection: 'row', gap: SPACING.md }}>
+            <Input
+              label="Quantity"
+              value={manualProdQty}
+              onChangeText={setManualProdQty}
+              placeholder="1"
+              keyboardType="numeric"
+              icon="calculator-outline"
+              containerStyle={{ flex: 1 }}
+            />
+            <Input
+              label="Price (per unit) (₹)"
+              value={manualProdRate}
+              onChangeText={setManualProdRate}
+              placeholder="250"
+              keyboardType="numeric"
+              icon="cash-outline"
+              containerStyle={{ flex: 1 }}
+            />
+          </View>
+
+          {liveRowTotal > 0 ? (
+            <View style={styles.liveTotalContainer}>
+              <Text style={styles.liveTotalLabel}>Item Total Preview:</Text>
+              <Text style={styles.liveTotalValue}>{formatCurrency(liveRowTotal)}</Text>
+            </View>
+          ) : null}
+
+
+          <Button
+            title="Add Product to Bill"
+            variant="outline"
+            icon="add-circle-outline"
+            onPress={handleAddItem}
+            style={{ marginTop: SPACING.sm }}
+          />
         </Card>
 
         {/* Financials & Toggles Block */}
@@ -452,7 +495,7 @@ export const CreateInvoiceScreen = () => {
           {discountToggled && totals.discount > 0 ? (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Discount Deduction</Text>
-              <Text style={[styles.summaryVal, { color: COLORS.danger }]}>
+              <Text style={[styles.summaryVal, { color: colors.danger }]}>
                 -{formatCurrency(totals.discount)}
               </Text>
             </View>
@@ -529,7 +572,7 @@ export const CreateInvoiceScreen = () => {
           <View style={styles.modalSearchHeader}>
             <Text style={styles.modalTitle}>Choose Customer</Text>
             <TouchableOpacity onPress={() => setCustomerModalVisible(false)}>
-              <Ionicons name="close" size={24} color={COLORS.primary} />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
           <Input
@@ -558,102 +601,21 @@ export const CreateInvoiceScreen = () => {
         </SafeAreaView>
       </Modal>
 
-      {/* Add Product Item Modal (Direct manual entry inputs) */}
-      <Modal
-        visible={itemModalVisible}
-        animationType="slide"
-        onRequestClose={() => {
-          setItemModalVisible(false);
-        }}
-      >
-        <SafeAreaView style={styles.modalSafeArea}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1 }}
-          >
-            <ScrollView contentContainerStyle={{ paddingBottom: SPACING.xxxl }}>
-              <View style={styles.modalSearchHeader}>
-                <Text style={styles.modalTitle}>Add Product Details</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setItemModalVisible(false);
-                  }}
-                >
-                  <Ionicons name="close" size={24} color={COLORS.primary} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.selectedProdForm}>
-                <Input
-                  label="Product Description / Name"
-                  value={manualProdName}
-                  onChangeText={setManualProdName}
-                  placeholder="e.g. Cotton Lungi XL"
-                  icon="cube-outline"
-                />
-
-                <Input
-                  label="Brand (Optional)"
-                  value={manualProdBrand}
-                  onChangeText={setManualProdBrand}
-                  placeholder="e.g. AH&S Special"
-                  icon="ribbon-outline"
-                />
-
-                <View style={{ flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.xs }}>
-                  <Input
-                    label="Quantity (pcs)"
-                    value={manualProdQty}
-                    onChangeText={setManualProdQty}
-                    placeholder="1"
-                    keyboardType="numeric"
-                    icon="calculator-outline"
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <Input
-                    label="Wholesale Rate / Unit (₹)"
-                    value={manualProdRate}
-                    onChangeText={setManualProdRate}
-                    placeholder="250"
-                    keyboardType="numeric"
-                    icon="cash-outline"
-                    containerStyle={{ flex: 1 }}
-                  />
-                </View>
-
-                <View style={styles.prodFormActions}>
-                  <Button
-                    title="Cancel"
-                    variant="outline"
-                    onPress={() => setItemModalVisible(false)}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    title="Add To Bill"
-                    onPress={handleAddItem}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   scrollBody: {
     paddingBottom: SPACING.xxxl,
   },
   sectionTitle: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
+    color: colors.text,
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.lg,
     marginBottom: SPACING.sm,
@@ -662,7 +624,7 @@ const styles = StyleSheet.create({
   metaCard: {
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.md,
-    backgroundColor: COLORS.primary,
+    backgroundColor: isDarkMode ? colors.cardBg : colors.primary,
   },
   invoiceHeaderRow: {
     flexDirection: 'row',
@@ -678,18 +640,18 @@ const styles = StyleSheet.create({
   invoiceNumText: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.secondary,
+    color: colors.secondary,
     marginTop: 2,
   },
   invoiceDateText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: colors.white,
     marginTop: 2,
   },
   customerCard: {
     marginHorizontal: SPACING.lg,
-    backgroundColor: COLORS.white,
+    backgroundColor: colors.cardBg,
   },
   selectedCustContainer: {
     flexDirection: 'row',
@@ -704,12 +666,12 @@ const styles = StyleSheet.create({
   },
   selectedCustName: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
+    color: colors.text,
     fontWeight: '700',
   },
   selectedCustSub: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   clearCustBtn: {
@@ -723,42 +685,21 @@ const styles = StyleSheet.create({
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
   },
   orText: {
     fontSize: 10,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
     marginHorizontal: SPACING.md,
   },
   formRow: {
     flexDirection: 'row',
   },
-  itemHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingRight: SPACING.lg,
-  },
-  addItemHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.lg,
-    backgroundColor: 'rgba(217, 119, 6, 0.08)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: BORDER_RADIUS.sm,
-  },
-  addItemHeaderBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.secondary,
-    marginLeft: 4,
-  },
   itemsCard: {
     marginHorizontal: SPACING.lg,
     padding: 0,
-    backgroundColor: COLORS.white,
+    backgroundColor: colors.cardBg,
     overflow: 'hidden',
   },
   emptyItemsBox: {
@@ -768,12 +709,13 @@ const styles = StyleSheet.create({
   },
   emptyItemsText: {
     ...TYPOGRAPHY.bodyMuted,
+    color: colors.textMuted,
     marginTop: SPACING.sm,
     textAlign: 'center',
   },
   summaryCard: {
     marginHorizontal: SPACING.lg,
-    backgroundColor: COLORS.white,
+    backgroundColor: colors.cardBg,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -783,21 +725,21 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   summaryLabelMuted: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   summaryVal: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: colors.text,
   },
   toggleRow: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(226, 232, 240, 0.5)',
+    borderBottomColor: 'rgba(226, 232, 240, 0.2)',
   },
   inlineInputRow: {
     flexDirection: 'row',
@@ -805,15 +747,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(226, 232, 240, 0.5)',
+    borderBottomColor: 'rgba(226, 232, 240, 0.2)',
   },
   gstSelectionBlock: {
     paddingVertical: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(226, 232, 240, 0.5)',
+    borderBottomColor: 'rgba(226, 232, 240, 0.2)',
   },
   rateSelectionLabel: {
     ...TYPOGRAPHY.bodyMuted,
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: '600',
     marginBottom: SPACING.sm,
@@ -826,38 +769,38 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderWidth: 1.5,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   ratePillActive: {
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
-    borderColor: COLORS.secondary,
+    backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(217, 119, 6, 0.1)',
+    borderColor: colors.secondary,
   },
   ratePillText: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   ratePillTextActive: {
-    color: COLORS.secondary,
+    color: colors.secondary,
   },
   grandTotalRow: {
     borderTopWidth: 1.5,
-    borderTopColor: COLORS.border,
+    borderTopColor: colors.border,
     paddingTop: SPACING.md,
     marginTop: SPACING.sm,
   },
   grandTotalLabel: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.primary,
+    color: colors.text,
     fontWeight: '800',
   },
   grandTotalVal: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.secondary,
+    color: colors.secondary,
     fontWeight: '800',
   },
   saveBtn: {
@@ -866,35 +809,35 @@ const styles = StyleSheet.create({
   },
   modalSafeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   modalSearchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: SPACING.lg,
-    backgroundColor: COLORS.white,
+    backgroundColor: colors.cardBg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
     marginBottom: SPACING.md,
   },
   modalTitle: {
     ...TYPOGRAPHY.h2,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: colors.text,
   },
   modalItemCard: {
     marginBottom: SPACING.sm,
-    backgroundColor: COLORS.white,
+    backgroundColor: colors.cardBg,
     padding: SPACING.md,
   },
   modalItemName: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
+    color: colors.text,
   },
   modalItemSub: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   selectedProdForm: {
@@ -905,4 +848,28 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     marginTop: SPACING.xl,
   },
+  liveTotalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: isDarkMode ? '#222' : '#F1F5F9',
+    borderRadius: BORDER_RADIUS.sm,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
+    borderColor: colors.border,
+    borderWidth: 1,
+  },
+  liveTotalLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  liveTotalValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.secondary,
+  },
 });
+

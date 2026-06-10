@@ -1,4 +1,4 @@
-export const COLORS = {
+export const LIGHT_COLORS = {
   primary: '#1E293B',     // Deep Slate Navy
   primaryLight: '#334155',
   secondary: '#D97706',   // Warm Amber Gold
@@ -17,6 +17,29 @@ export const COLORS = {
   glass: 'rgba(255, 255, 255, 0.85)',
   shadowColor: 'rgba(15, 23, 42, 0.08)',
 };
+
+export const DARK_COLORS = {
+  primary: '#FFFFFF',          // In dark mode we use white for primary headings
+  primaryLight: '#CBD5E1',
+  secondary: '#F59E0B',        // Warm Amber Gold (retains same identity)
+  secondaryLight: '#FBBF24',
+  background: '#111111',       // AMOLED Black
+  cardBg: '#1A1A1A',           // Dark grey for cards
+  text: '#F8FAFC',             // Off-white text
+  textMuted: '#94A3B8',        // Cool grey text
+  border: '#2A2E35',           // Subtle border
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  info: '#3B82F6',
+  white: '#FFFFFF',
+  black: '#000000',
+  glass: 'rgba(26, 26, 26, 0.85)',
+  shadowColor: 'rgba(0, 0, 0, 0.4)',
+};
+
+// Fallback constant for static properties
+export const COLORS = LIGHT_COLORS;
 
 export const SPACING = {
   xs: 4,
@@ -103,4 +126,16 @@ export const TYPOGRAPHY = {
     fontSize: 12,
     color: COLORS.textMuted,
   },
+};
+
+export const getThemeColors = (isDarkMode: boolean) => {
+  return isDarkMode ? DARK_COLORS : LIGHT_COLORS;
+};
+
+// Custom React Hook to subscribe to settings context and get active theme
+import { useSettings } from '../context/SettingsContext';
+export const useTheme = () => {
+  const { isDarkMode } = useSettings();
+  const colors = getThemeColors(isDarkMode);
+  return { colors, isDarkMode };
 };

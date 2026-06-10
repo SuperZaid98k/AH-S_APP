@@ -11,7 +11,7 @@ import {
   StyleProp,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../styles/theme';
+import { useTheme, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../styles/theme';
 
 interface InputProps {
   label?: string;
@@ -27,6 +27,8 @@ interface InputProps {
   style?: StyleProp<ViewStyle>;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -43,23 +45,43 @@ export const Input: React.FC<InputProps> = ({
   style,
   containerStyle,
   inputStyle,
+  multiline = false,
+  numberOfLines,
 }) => {
+  const { colors, isDarkMode } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(!secureTextEntry);
 
   const handleFocus = () => setIsFocused(true);
   const handleBlur = () => setIsFocused(false);
 
+  // Dynamic style values based on theme state
+  const containerStyleDynamic: ViewStyle = {
+    backgroundColor: editable ? colors.cardBg : colors.background,
+    borderColor: error
+      ? colors.danger
+      : isFocused
+      ? colors.secondary
+      : colors.border,
+    ...(multiline ? { height: 'auto', minHeight: 90, alignItems: 'flex-start', paddingVertical: SPACING.sm } : {}),
+  };
+
+  const labelStyleDynamic: TextStyle = {
+    color: isDarkMode ? colors.text : colors.primaryLight,
+  };
+
+  const textInputStyleDynamic: TextStyle = {
+    color: colors.text,
+  };
+
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, labelStyleDynamic]}>{label}</Text>}
       
       <View
         style={[
           styles.inputContainer,
-          !editable && styles.disabledContainer,
-          isFocused && styles.focusedBorder,
-          error ? styles.errorBorder : null,
+          containerStyleDynamic,
           style,
         ]}
       >
@@ -67,8 +89,8 @@ export const Input: React.FC<InputProps> = ({
           <Ionicons
             name={icon}
             size={20}
-            color={error ? COLORS.danger : isFocused ? COLORS.primary : COLORS.textMuted}
-            style={styles.leftIcon}
+            color={error ? colors.danger : isFocused ? colors.secondary : colors.textMuted}
+            style={[styles.leftIcon, multiline && { marginTop: 2 }]}
           />
         )}
         
@@ -76,18 +98,21 @@ export const Input: React.FC<InputProps> = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={colors.textMuted}
           secureTextEntry={secureTextEntry && !showPassword}
           keyboardType={keyboardType}
           editable={editable}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          style={[styles.input, !editable && styles.disabledInput, inputStyle]}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          textAlignVertical={multiline ? 'top' : 'center'}
+          style={[styles.input, textInputStyleDynamic, !editable && { color: colors.textMuted }, inputStyle, multiline && { minHeight: 60 }]}
         />
         
         {value.length > 0 && onClear && editable && (
-          <TouchableOpacity onPress={onClear} style={styles.rightIcon} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+          <TouchableOpacity onPress={onClear} style={[styles.rightIcon, multiline && { marginTop: 2 }]} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         )}
 
@@ -100,16 +125,17 @@ export const Input: React.FC<InputProps> = ({
             <Ionicons
               name={showPassword ? 'eye-off' : 'eye'}
               size={20}
-              color={COLORS.textMuted}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         )}
       </View>
       
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -125,29 +151,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
     paddingHorizontal: SPACING.md,
-    backgroundColor: COLORS.white,
-  },
-  disabledContainer: {
-    backgroundColor: COLORS.background,
-    borderColor: COLORS.border,
-  },
-  focusedBorder: {
-    borderColor: COLORS.primary,
-  },
-  errorBorder: {
-    borderColor: COLORS.danger,
   },
   input: {
     flex: 1,
     height: '100%',
-    color: COLORS.text,
     fontSize: 15,
-  },
-  disabledInput: {
-    color: COLORS.textMuted,
   },
   leftIcon: {
     marginRight: SPACING.sm,
@@ -156,7 +166,6 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.sm,
   },
   errorText: {
-    color: COLORS.danger,
     fontSize: 12,
     marginTop: SPACING.xs,
     marginLeft: SPACING.xs,

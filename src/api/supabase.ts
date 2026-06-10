@@ -255,23 +255,86 @@ export const db = {
       return `${prefix}${String(nextNum).padStart(4, '0')}`;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    // Find the count of invoices generated today
-    const { data, error } = await supabase
-      .from('invoices')
-      .select('invoice_number')
-      .gte('date', `${todayStr}T00:00:00Z`)
-      .lte('date', `${todayStr}T23:59:59Z`);
-
-    const todaySlug = todayStr.replace(/-/g, '');
-    const prefix = `AHS-${todaySlug}-`;
-
-    if (error || !data || data.length === 0) {
-      return `${prefix}0001`;
+    try {
+      const { data, error } = await supabase.rpc('get_next_invoice_number');
+      if (error) throw error;
+      if (data) return data;
+    } catch (err) {
+      console.error('Error fetching next invoice number from RPC:', err);
     }
 
-    const nums = data.map(i => parseInt(i.invoice_number.split('-')[2] || '0', 10));
-    const nextNum = Math.max(...nums) + 1;
-    return `${prefix}${String(nextNum).padStart(4, '0')}`;
+    // Fallback in case of RPC error (e.g. function not deployed yet)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todaySlug = todayStr.replace(/-/g, '');
+    const prefix = `AHS-${todaySlug}-`;
+    return `${prefix}0001`;
+  },
+
+  // Notes Management (Public / Private notes)
+  async getNotes(role: string, userId: string) {
+    if (!supabaseUrl) {
+      const mockNotes = await AsyncStorage.getItem('@mock_notes');
+      const data = mockNotes ? JSON.parse(mockNotes) : [];
+      // Simulation mode returns notes that are public OR created by current user
+      const filtered = data.filter((n: any) => !n.is_private || n.created_by === userId);
+      // Sort by created_at descending
+      filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return { data: filtered, error: null };
+    }
+
+    return supabase.from('notes').select('*').order('created_at', { ascending: false });
+  },
+
+  async saveNote(note: { id?: string; title: string; content: string; is_private: boolean; created_by: string; created_by_name: string }) {
+    if (!supabaseUrl) {
+      const mockNotes = await AsyncStorage.getItem('@mock_notes');
+      const allNotes = mockNotes ? JSON.parse(mockNotes) : [];
+
+      let savedNote: any;
+      if (note.id) {
+        const index = allNotes.findIndex((n: any) => n.id === note.id);
+        if (index !== -1) {
+          allNotes[index] = {
+            ...allNotes[index],
+            title: note.title,
+            content: note.content,
+            is_private: note.is_private,
+          };
+          savedNote = allNotes[index];
+        } else {
+          return { data: null, error: { message: 'Note not found' } };
+        }
+      } else {
+        savedNote = {
+          ...note,
+          id: 'note_' + Date.now(),
+          created_at: new Date().toISOString(),
+        };
+        allNotes.unshift(savedNote);
+      }
+      await AsyncStorage.setItem('@mock_notes', JSON.stringify(allNotes));
+      return { data: savedNote, error: null };
+    }
+
+    if (note.id) {
+      // Exclude id from the update payload
+      const { id, ...updateData } = note;
+      return supabase.from('notes').update(updateData).eq('id', id).select().single();
+    } else {
+      return supabase.from('notes').insert([note]).select().single();
+    }
+  },
+
+  async deleteNote(noteId: string) {
+    if (!supabaseUrl) {
+      const mockNotes = await AsyncStorage.getItem('@mock_notes');
+      const allNotes = mockNotes ? JSON.parse(mockNotes) : [];
+      const updated = allNotes.filter((n: any) => n.id !== noteId);
+      await AsyncStorage.setItem('@mock_notes', JSON.stringify(updated));
+      return { error: null };
+    }
+
+    return supabase.from('notes').delete().eq('id', noteId);
   },
 };
+

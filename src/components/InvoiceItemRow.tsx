@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../styles/theme';
+import { useTheme, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../styles/theme';
 import { formatCurrency } from '../utils/helpers';
 
 interface InvoiceItem {
@@ -24,35 +24,36 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   onDelete,
   showDelete = true,
 }) => {
+  const { colors, isDarkMode } = useTheme();
   const hasBrand = item.brand !== undefined && item.brand !== null && item.brand.trim() !== '';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { borderBottomColor: colors.border, backgroundColor: colors.cardBg }]}>
       <View style={styles.leftContent}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={[styles.name, { color: isDarkMode ? colors.white : colors.primary }]} numberOfLines={1}>
           {item.product_name}
         </Text>
         <View style={styles.metaRow}>
           {hasBrand && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{item.brand}</Text>
+            <View style={[styles.badge, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(217, 119, 6, 0.1)' }]}>
+              <Text style={[styles.badgeText, { color: colors.secondary }]}>{item.brand}</Text>
             </View>
           )}
-          <Text style={styles.priceCalc}>
+          <Text style={[styles.priceCalc, { color: colors.textMuted }]}>
             {item.quantity} x {formatCurrency(item.price)}
           </Text>
         </View>
       </View>
       
       <View style={styles.rightContent}>
-        <Text style={styles.total}>{formatCurrency(item.total)}</Text>
+        <Text style={[styles.total, { color: colors.text }]}>{formatCurrency(item.total)}</Text>
         {showDelete && (
           <TouchableOpacity
             onPress={onDelete}
             style={styles.deleteButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
           </TouchableOpacity>
         )}
       </View>
@@ -68,8 +69,6 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm + 2,
     paddingHorizontal: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
   },
   leftContent: {
     flex: 1,
@@ -78,7 +77,6 @@ const styles = StyleSheet.create({
   name: {
     ...TYPOGRAPHY.h3,
     fontSize: 15,
-    color: COLORS.primary,
     fontWeight: '600',
     marginBottom: SPACING.xs - 2,
   },
@@ -87,7 +85,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badge: {
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
     borderRadius: BORDER_RADIUS.xs,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
@@ -95,12 +92,10 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    color: COLORS.secondary,
     fontWeight: '600',
   },
   priceCalc: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
   },
   rightContent: {
     flexDirection: 'row',
@@ -109,7 +104,6 @@ const styles = StyleSheet.create({
   total: {
     ...TYPOGRAPHY.h3,
     fontSize: 15,
-    color: COLORS.text,
     marginRight: SPACING.md,
   },
   deleteButton: {

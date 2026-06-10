@@ -5,7 +5,6 @@ import {
   StyleSheet,
   SafeAreaView,
   FlatList,
-  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../api/supabase';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../styles/theme';
+import { useTheme, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../styles/theme';
 import { formatCurrency, formatDate } from '../utils/helpers';
 
 type RootStackParamList = {
@@ -26,6 +25,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const InvoiceHistoryScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { userProfile } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   
   const [invoices, setInvoices] = useState<any[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<any[]>([]);
@@ -67,9 +67,9 @@ export const InvoiceHistoryScreen = () => {
   }, [search, invoices]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Search Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <Input
           value={search}
           onChangeText={setSearch}
@@ -89,8 +89,8 @@ export const InvoiceHistoryScreen = () => {
         onRefresh={fetchInvoices}
         ListEmptyComponent={
           <Card style={styles.emptyCard}>
-            <Ionicons name="document-text-outline" size={48} color={COLORS.textMuted} />
-            <Text style={styles.emptyText}>No matching invoices found.</Text>
+            <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No matching invoices found.</Text>
           </Card>
         }
         renderItem={({ item }) => {
@@ -105,40 +105,50 @@ export const InvoiceHistoryScreen = () => {
             >
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.invoiceNum}>{item.invoice_number}</Text>
-                  <Text style={styles.customerName}>{item.customer_name}</Text>
+                  <Text style={[styles.invoiceNum, { color: isDarkMode ? colors.white : colors.primary }]}>
+                    {item.invoice_number}
+                  </Text>
+                  <Text style={[styles.customerName, { color: colors.text }]}>{item.customer_name}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.invoiceTotal}>{formatCurrency(item.total)}</Text>
+                  <Text style={[styles.invoiceTotal, { color: colors.secondary }]}>
+                    {formatCurrency(item.total)}
+                  </Text>
                   <View style={styles.badgeRow}>
                     {item.gst_enabled && item.gst_amount > 0 ? (
-                      <View style={[styles.badge, styles.gstBadge]}>
-                        <Text style={styles.badgeText}>GST</Text>
+                      <View style={[
+                        styles.badge, 
+                        { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(5, 150, 105, 0.1)' }
+                      ]}>
+                        <Text style={[styles.badgeText, { color: colors.success }]}>GST</Text>
                       </View>
                     ) : null}
                     {item.discount > 0 ? (
-                      <View style={[styles.badge, styles.discountBadge]}>
-                        <Text style={styles.badgeText}>DSC</Text>
+                      <View style={[
+                        styles.badge, 
+                        { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(225, 29, 72, 0.1)' }
+                      ]}>
+                        <Text style={[styles.badgeText, { color: colors.danger }]}>DSC</Text>
                       </View>
                     ) : null}
                   </View>
                 </View>
               </View>
 
-              <View style={styles.cardDivider} />
+              <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
 
               <View style={styles.cardFooter}>
                 <View style={styles.footerInfo}>
-                  <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
-                  <Text style={styles.footerText}>
+                  <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
+                  <Text style={[styles.footerText, { color: colors.textMuted }]}>
                     {new Date(item.date).toLocaleDateString('en-IN')}
                   </Text>
                 </View>
                 
                 {userProfile?.role === 'admin' ? (
                   <View style={styles.footerInfo}>
-                    <Ionicons name="person-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={styles.footerText}>Seller: {sellerName}</Text>
+                    <Ionicons name="person-outline" size={13} color={colors.textMuted} />
+                    <Text style={[styles.footerText, { color: colors.textMuted }]}>Seller: {sellerName}</Text>
                   </View>
                 ) : null}
               </View>
@@ -153,14 +163,11 @@ export const InvoiceHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
-    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   searchBar: {
     marginBottom: SPACING.md,
@@ -179,7 +186,6 @@ const styles = StyleSheet.create({
   },
   invoiceCard: {
     marginBottom: SPACING.md,
-    backgroundColor: COLORS.white,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -188,18 +194,15 @@ const styles = StyleSheet.create({
   },
   invoiceNum: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
     fontWeight: '800',
   },
   customerName: {
     ...TYPOGRAPHY.body,
     fontWeight: '600',
-    color: COLORS.text,
     marginTop: 2,
   },
   invoiceTotal: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.secondary,
     fontWeight: '800',
   },
   badgeRow: {
@@ -212,20 +215,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
-  gstBadge: {
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
-  },
-  discountBadge: {
-    backgroundColor: 'rgba(225, 29, 72, 0.1)',
-  },
   badgeText: {
     fontSize: 8,
     fontWeight: '800',
-    color: COLORS.textMuted,
   },
   cardDivider: {
     height: 1,
-    backgroundColor: COLORS.border,
     marginVertical: SPACING.md,
   },
   cardFooter: {
@@ -240,7 +235,6 @@ const styles = StyleSheet.create({
   footerText: {
     ...TYPOGRAPHY.caption,
     marginLeft: 4,
-    color: COLORS.textMuted,
     fontWeight: '500',
   },
 });

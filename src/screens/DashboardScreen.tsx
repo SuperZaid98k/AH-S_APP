@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../api/supabase';
 import { Card } from '../components/Card';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../styles/theme';
+import { Drawer } from '../components/Drawer';
+import { useTheme, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../styles/theme';
 import { formatCurrency } from '../utils/helpers';
 
 const { width } = Dimensions.get('window');
@@ -34,14 +35,31 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { userProfile } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+  
   const [refreshing, setRefreshing] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
   // Analytics State
   const [totalSales, setTotalSales] = useState(0);
   const [invoiceCount, setInvoiceCount] = useState(0);
-  const [avgInvoice, setAvgInvoice] = useState(0);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [salesByUser, setSalesByUser] = useState<Record<string, { name: string; amount: number; count: number }>>({});
+
+  // Configure Hamburger Menu icon in the Navigation Header
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => setIsDrawerOpen(true)}
+          style={{ marginLeft: SPACING.md, padding: SPACING.xs }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="menu-outline" size={26} color={colors.text} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors]);
 
   const loadDashboardData = useCallback(async () => {
     if (!userProfile) return;
@@ -54,7 +72,6 @@ export const DashboardScreen = () => {
         const total = invoices.reduce((sum: number, inv: any) => sum + Number(inv.total), 0);
         setTotalSales(total);
         setInvoiceCount(invoices.length);
-        setAvgInvoice(total / invoices.length);
         setRecentInvoices(invoices.slice(0, 3)); // Pick 3 most recent
 
         // Calculate sales breakdown by user if admin
@@ -62,10 +79,8 @@ export const DashboardScreen = () => {
           const breakdown: typeof salesByUser = {};
           
           for (const inv of invoices) {
-            const userName = inv.customer_name || 'System'; // placeholder
             const userKey = inv.created_by || 'unknown';
             
-            // In a real database, we would join profiles. For mock/sim we can parse or use default descriptors
             let sellerName = 'Sales Desk';
             if (userKey === 'usr_admin' || userKey.includes('admin')) {
               sellerName = 'Ahmad Hasan (Admin)';
@@ -86,7 +101,6 @@ export const DashboardScreen = () => {
       } else {
         setTotalSales(0);
         setInvoiceCount(0);
-        setAvgInvoice(0);
         setRecentInvoices([]);
         setSalesByUser({});
       }
@@ -104,104 +118,148 @@ export const DashboardScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerGreet}>Assalamu Alaikum,</Text>
-          <Text style={styles.headerUser}>{userProfile?.name}</Text>
-          <View style={styles.roleTag}>
-            <Text style={styles.roleText}>
-              {userProfile?.role === 'admin' ? 'Proprietor / Admin' : 'Sales Representative'}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={styles.settingsBtn}
-          onPress={() => navigation.navigate('Settings')}
-        >
-          <Ionicons name="settings-outline" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
-
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollBody}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadDashboardData} />}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={loadDashboardData} 
+            tintColor={colors.secondary} 
+            colors={[colors.secondary]} 
+          />
+        }
       >
-        {/* Analytics Section */}
-        <Text style={styles.sectionTitle}>Sales Summary</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.analyticsScroll}
-        >
-          <Card style={[styles.kpiCard, { backgroundColor: COLORS.primary }]} variant="premium">
-            <Ionicons name="cash-outline" size={24} color={COLORS.secondary} />
-            <Text style={styles.kpiValue}>{formatCurrency(totalSales)}</Text>
-            <Text style={styles.kpiLabel}>Total Revenue</Text>
-          </Card>
-
-          <Card style={styles.kpiCard}>
-            <Ionicons name="receipt-outline" size={24} color={COLORS.primary} />
-            <Text style={[styles.kpiValue, { color: COLORS.primary }]}>{invoiceCount}</Text>
-            <Text style={[styles.kpiLabel, { color: COLORS.textMuted }]}>Total Invoices</Text>
-          </Card>
-
-          <Card style={styles.kpiCard}>
-            <Ionicons name="calculator-outline" size={24} color={COLORS.primary} />
-            <Text style={[styles.kpiValue, { color: COLORS.primary }]}>{formatCurrency(avgInvoice)}</Text>
-            <Text style={[styles.kpiLabel, { color: COLORS.textMuted }]}>Average Ticket</Text>
-          </Card>
-        </ScrollView>
-
-        {/* Quick Menu Grid */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.grid}>
-          <TouchableOpacity
-            style={[styles.gridItem, { width: width - SPACING.lg * 2 }]}
-            onPress={() => navigation.navigate('CreateInvoice')}
-          >
-            <View style={[styles.gridIconBox, { backgroundColor: 'rgba(217, 119, 6, 0.1)' }]}>
-              <Ionicons name="add-circle" size={28} color={COLORS.secondary} />
+        {/* PREMIUM HERO CARD: Mimicking the user's provided mockup image */}
+        <View style={styles.heroCardContainer}>
+          <View style={styles.heroCard}>
+            {/* Gold Badge */}
+            <View style={styles.sinceBadge}>
+              <Text style={styles.sinceBadgeText}>SINCE 1980</Text>
             </View>
-            <Text style={styles.gridLabel}>Create Invoice</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.gridItem}
-            onPress={() => navigation.navigate('InvoiceHistory')}
-          >
-            <View style={[styles.gridIconBox, { backgroundColor: 'rgba(30, 41, 59, 0.1)' }]}>
-              <Ionicons name="list" size={28} color={COLORS.primary} />
-            </View>
-            <Text style={styles.gridLabel}>History / Search</Text>
-          </TouchableOpacity>
+            {/* Branding Titles */}
+            <Text style={styles.brandTitleText}>Ahmad Hasan &</Text>
+            <Text style={styles.brandTitleText}>Sons</Text>
+            <Text style={styles.brandAccentText}>Handloom</Text>
 
-          <TouchableOpacity
-            style={styles.gridItem}
-            onPress={() => navigation.navigate('CustomerManagement')}
-          >
-            <View style={[styles.gridIconBox, { backgroundColor: 'rgba(37, 99, 235, 0.1)' }]}>
-              <Ionicons name="people-outline" size={28} color={COLORS.info} />
-            </View>
-            <Text style={styles.gridLabel}>Customers Database</Text>
-          </TouchableOpacity>
+            {/* Description Slogan */}
+            <Text style={styles.brandSlogan}>
+              Excellence in Towels, Lungis, and Rumals. Woven with tradition, made with pride.
+            </Text>
+
+            {/* Primary Action Button */}
+            <TouchableOpacity
+              style={styles.heroPrimaryBtn}
+              onPress={() => navigation.navigate('CreateInvoice')}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="add" size={20} color="#000000" style={{ marginRight: 6 }} />
+              <Text style={styles.heroPrimaryBtnText}>Create New Bill</Text>
+            </TouchableOpacity>
+
+            {/* Secondary Action Button */}
+            <TouchableOpacity
+              style={styles.heroSecondaryBtn}
+              onPress={() => navigation.navigate('CustomerManagement')}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.heroSecondaryBtnText}>Customer Database</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Admin Sales Breakdown */}
+        {/* STATS STRIP */}
+        <View style={styles.statsStrip}>
+          <Card style={[styles.statBox, { backgroundColor: colors.cardBg, borderColor: colors.border }]} variant="elevated">
+            <Text style={[styles.statVal, { color: colors.secondary }]}>{invoiceCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Today's Bills</Text>
+          </Card>
+          <Card style={[styles.statBox, { backgroundColor: colors.cardBg, borderColor: colors.border }]} variant="elevated">
+            <Text style={[styles.statVal, { color: colors.secondary }]}>{formatCurrency(totalSales)}</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Total Sales</Text>
+          </Card>
+        </View>
+
+        {/* QUICK MENU: Terminal Rows */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Actions</Text>
+        
+        {/* Billing Terminal Row: Matches Mockup cart row */}
+        <TouchableOpacity
+          style={[styles.terminalRow, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('CreateInvoice')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.terminalRowLeft}>
+            <View style={styles.terminalCartIconBox}>
+              <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Billing Terminal</Text>
+              <Text style={styles.terminalRowSub}>NEW SALE ENTRY</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
+        {/* Ledger Book Row */}
+        <TouchableOpacity
+          style={[styles.terminalRow, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('InvoiceHistory')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.terminalRowLeft}>
+            <View style={[styles.terminalCartIconBox, { backgroundColor: '#2C3E50' }]}>
+              <Ionicons name="receipt-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Ledger Book</Text>
+              <Text style={styles.terminalRowSub}>INVOICE LEDGER & SEARCH</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
+        {/* Customer Database Row */}
+        <TouchableOpacity
+          style={[styles.terminalRow, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('CustomerManagement')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.terminalRowLeft}>
+            <View style={[styles.terminalCartIconBox, { backgroundColor: '#1E3A8A' }]}>
+              <Ionicons name="people-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Customer Registry</Text>
+              <Text style={styles.terminalRowSub}>MANAGE CLIENT LIST</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
+        {/* Sales Breakdown by User (Admin Only) */}
         {userProfile?.role === 'admin' && Object.keys(salesByUser).length > 0 && (
           <View style={styles.breakdownSection}>
-            <Text style={styles.sectionTitle}>Sales Desk Breakdown</Text>
-            <Card style={styles.breakdownCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Sales Desk Breakdown</Text>
+            <Card style={[styles.breakdownCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
               {Object.values(salesByUser).map((seller: any, idx) => (
-                <View key={idx} style={styles.sellerRow}>
+                <View 
+                  key={idx} 
+                  style={[
+                    styles.sellerRow, 
+                    { borderBottomColor: colors.border },
+                    idx === Object.keys(salesByUser).length - 1 && { borderBottomWidth: 0, paddingBottom: 0 }
+                  ]}
+                >
                   <View style={styles.sellerMeta}>
-                    <Ionicons name="person-circle-outline" size={22} color={COLORS.textMuted} />
-                    <Text style={styles.sellerName}>{seller.name}</Text>
+                    <Ionicons name="person-circle-outline" size={22} color={colors.textMuted} />
+                    <Text style={[styles.sellerName, { color: colors.text }]}>{seller.name}</Text>
                   </View>
                   <View style={styles.sellerData}>
-                    <Text style={styles.sellerAmt}>{formatCurrency(seller.amount)}</Text>
-                    <Text style={styles.sellerCount}>{seller.count} Bills</Text>
+                    <Text style={[styles.sellerAmt, { color: colors.secondary }]}>{formatCurrency(seller.amount)}</Text>
+                    <Text style={[styles.sellerCount, { color: colors.textMuted }]}>{seller.count} Bills</Text>
                   </View>
                 </View>
               ))}
@@ -212,28 +270,30 @@ export const DashboardScreen = () => {
         {/* Recent Invoices list */}
         <View style={styles.recentSection}>
           <View style={styles.recentHeader}>
-            <Text style={styles.sectionTitle}>Recent Invoices</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Invoices</Text>
             <TouchableOpacity onPress={() => navigation.navigate('InvoiceHistory')}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <Text style={[styles.viewAllText, { color: colors.secondary }]}>View All</Text>
             </TouchableOpacity>
           </View>
 
           {recentInvoices.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <Ionicons name="document-text-outline" size={40} color={COLORS.textMuted} />
-              <Text style={styles.emptyText}>No invoices generated yet.</Text>
+            <Card style={[styles.emptyCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+              <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No invoices generated today.</Text>
             </Card>
           ) : (
             recentInvoices.map((item, index) => (
               <Card
                 key={index}
-                style={styles.recentItem}
+                style={[styles.recentItem, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
                 onPress={() => navigation.navigate('InvoiceDetails', { invoiceId: item.id })}
               >
                 <View style={styles.recentLeft}>
-                  <Text style={styles.invoiceNum}>{item.invoice_number}</Text>
-                  <Text style={styles.customerName}>{item.customer_name}</Text>
-                  <Text style={styles.invoiceDate}>
+                  <Text style={[styles.invoiceNum, { color: colors.text }]}>{item.invoice_number}</Text>
+                  <Text style={[styles.customerName, { color: colors.text }]} numberOfLines={1}>
+                    {item.customer_name}
+                  </Text>
+                  <Text style={[styles.invoiceDate, { color: colors.textMuted }]}>
                     {new Date(item.created_at).toLocaleDateString('en-IN', {
                       day: 'numeric',
                       month: 'short',
@@ -241,14 +301,17 @@ export const DashboardScreen = () => {
                   </Text>
                 </View>
                 <View style={styles.recentRight}>
-                  <Text style={styles.invoiceTotal}>{formatCurrency(item.total)}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+                  <Text style={[styles.invoiceTotal, { color: colors.secondary }]}>{formatCurrency(item.total)}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                 </View>
               </Card>
             ))
           )}
         </View>
       </ScrollView>
+
+      {/* Slide-out Hamburger Menu Drawer Overlay */}
+      <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
     </SafeAreaView>
   );
 };
@@ -256,119 +319,160 @@ export const DashboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  headerGreet: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
-  headerUser: {
-    ...TYPOGRAPHY.h2,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  roleTag: {
-    backgroundColor: 'rgba(30, 41, 59, 0.08)',
-    borderRadius: BORDER_RADIUS.xs,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    marginTop: SPACING.xs - 2,
-    alignSelf: 'flex-start',
-  },
-  roleText: {
-    fontSize: 10,
-    color: COLORS.primary,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  settingsBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   scrollBody: {
     paddingBottom: SPACING.xxxl,
   },
   sectionTitle: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.lg,
     marginBottom: SPACING.sm,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  heroCardContainer: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+  },
+  heroCard: {
+    backgroundColor: '#0F0F0F', // Solid AMOLED Dark in the mockup image
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.xxl,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  sinceBadge: {
+    borderWidth: 1,
+    borderColor: '#D97706', // Gold border
+    borderRadius: 20,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 4,
+    marginBottom: SPACING.md,
+  },
+  sinceBadgeText: {
+    color: '#D97706', // Gold text
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  brandTitleText: {
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#FFFFFF', // White text
+    textAlign: 'center',
+    lineHeight: 33,
+    letterSpacing: 0.2,
+  },
+  brandAccentText: {
+    fontSize: 24,
+    fontStyle: 'italic',
+    fontWeight: '700',
+    color: '#F59E0B', // Amber Gold text
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
+  brandSlogan: {
+    fontSize: 13.5,
+    color: '#94A3B8', // Muted text
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: SPACING.xl,
+    paddingHorizontal: SPACING.sm,
+  },
+  heroPrimaryBtn: {
+    backgroundColor: '#FBBF24', // Warm Gold/Yellow background
+    borderRadius: BORDER_RADIUS.md,
+    height: 48,
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  heroPrimaryBtnText: {
+    color: '#000000', // Black text
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  heroSecondaryBtn: {
+    backgroundColor: '#1E1E1E', // Dark grey background
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    borderRadius: BORDER_RADIUS.md,
+    height: 48,
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroSecondaryBtnText: {
+    color: '#FFFFFF', // White text
+    fontSize: 15,
     fontWeight: '700',
   },
-  analyticsScroll: {
-    paddingLeft: SPACING.lg,
-    paddingRight: SPACING.sm,
-    paddingVertical: SPACING.xs,
-  },
-  kpiCard: {
-    width: width * 0.44,
-    marginRight: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.lg,
-    justifyContent: 'center',
-    minHeight: 120,
-  },
-  kpiValue: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.white,
-    fontSize: 19,
-    fontWeight: '800',
-    marginVertical: SPACING.xs,
-  },
-  kpiLabel: {
-    ...TYPOGRAPHY.caption,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  grid: {
+  statsStrip: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: SPACING.lg - 4,
+    paddingHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
     gap: SPACING.md,
   },
-  gridItem: {
-    width: (width - SPACING.lg * 2 - SPACING.md) / 2,
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.lg,
+  statBox: {
+    flex: 1,
+    paddingVertical: SPACING.md,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.md,
     borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.6)',
   },
-  gridIconBox: {
-    width: 52,
-    height: 52,
+  statVal: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  terminalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.lg,
     borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+  },
+  terminalRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  terminalCartIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: '#3D2F1D', // Dark brown gold bg for shopping cart row
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginRight: SPACING.md,
   },
-  gridLabel: {
-    ...TYPOGRAPHY.h3,
-    fontSize: 13,
-    color: COLORS.primary,
-    textAlign: 'center',
+  terminalRowTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  terminalRowSub: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+    marginTop: 1,
   },
   breakdownSection: {
     marginTop: SPACING.xs,
@@ -376,6 +480,7 @@ const styles = StyleSheet.create({
   breakdownCard: {
     marginHorizontal: SPACING.lg,
     padding: SPACING.md,
+    borderWidth: 1,
   },
   sellerRow: {
     flexDirection: 'row',
@@ -383,7 +488,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   sellerMeta: {
     flexDirection: 'row',
@@ -393,7 +497,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     fontWeight: '600',
     marginLeft: SPACING.sm,
-    color: COLORS.primary,
   },
   sellerData: {
     alignItems: 'flex-end',
@@ -401,11 +504,9 @@ const styles = StyleSheet.create({
   sellerAmt: {
     ...TYPOGRAPHY.body,
     fontWeight: '700',
-    color: COLORS.secondary,
   },
   sellerCount: {
     fontSize: 10,
-    color: COLORS.textMuted,
   },
   recentSection: {
     marginTop: SPACING.xs,
@@ -417,7 +518,6 @@ const styles = StyleSheet.create({
     paddingRight: SPACING.lg,
   },
   viewAllText: {
-    color: COLORS.secondary,
     fontWeight: '700',
     marginTop: SPACING.lg,
     fontSize: 13,
@@ -427,7 +527,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: SPACING.xxl,
-    backgroundColor: COLORS.white,
+    borderWidth: 1,
   },
   emptyText: {
     ...TYPOGRAPHY.bodyMuted,
@@ -441,7 +541,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
-    backgroundColor: COLORS.white,
+    borderWidth: 1,
   },
   recentLeft: {
     flex: 1,
@@ -449,18 +549,15 @@ const styles = StyleSheet.create({
   invoiceNum: {
     ...TYPOGRAPHY.h3,
     fontSize: 14,
-    color: COLORS.primary,
     fontWeight: '700',
   },
   customerName: {
     ...TYPOGRAPHY.body,
     fontWeight: '500',
-    color: COLORS.text,
     marginTop: 2,
   },
   invoiceDate: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
     marginTop: 4,
   },
   recentRight: {
@@ -471,7 +568,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.h3,
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.secondary,
     marginRight: SPACING.sm,
   },
 });
