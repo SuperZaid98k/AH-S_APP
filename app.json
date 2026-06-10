@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ahs-billing",
+    "name": "AH&S Billing",
     "slug": "ahs-billing",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,10 +16,12 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.superzaid.ahsbilling"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     }
+
   }
 }
