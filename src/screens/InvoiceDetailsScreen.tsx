@@ -148,38 +148,46 @@ export const InvoiceDetailsScreen = () => {
           style={[styles.bannerCard, { backgroundColor: isDarkMode ? colors.cardBg : '#1E293B' }]} 
           variant="premium"
         >
-          <View style={styles.bannerRow}>
+          <View style={styles.bannerHeaderRow}>
             <View>
-              <Text style={styles.bannerMetaLabel}>INVOICE NUMBER</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <Text style={styles.bannerInvoiceNum}>{invoice.invoice_number}</Text>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: invoice.status === 'balance' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }
-                ]}>
-                  <Text style={[
-                    styles.statusBadgeText,
-                    { color: invoice.status === 'balance' ? colors.danger : colors.success }
-                  ]}>
-                    {invoice.status === 'balance' ? 'BALANCE' : 'PAID'}
-                  </Text>
-                </View>
-              </View>
+              <Text style={styles.bannerMetaLabel}>INVOICE STATEMENT</Text>
+              <Text style={styles.bannerInvoiceNum}>{invoice.invoice_number}</Text>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.bannerMetaLabel}>GRAND TOTAL</Text>
-              <Text style={styles.bannerTotal}>{formatCurrency(invoice.total)}</Text>
+            <View style={[
+              styles.statusBadge,
+              { backgroundColor: invoice.status === 'balance' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }
+            ]}>
+              <Text style={[
+                styles.statusBadgeText,
+                { color: invoice.status === 'balance' ? colors.danger : colors.success }
+              ]}>
+                {invoice.status === 'balance' ? 'BALANCE DUE' : 'PAID'}
+              </Text>
             </View>
-
           </View>
+
           <View style={[styles.bannerDivider, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)' }]} />
+
+          <View style={styles.bannerDetailsRow}>
+            <View style={{ flex: 1.2 }}>
+              <Text style={styles.bannerMetaLabel}>DATE & TIME</Text>
+              <Text style={[styles.bannerDetailsVal, { color: colors.white }]}>{formatDate(invoice.date)}</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+              <Text style={styles.bannerMetaLabel}>NET PAYABLE</Text>
+              <Text style={styles.bannerTotalHighlight}>{formatCurrency(invoice.total)}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.bannerDivider, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)', marginVertical: SPACING.sm }]} />
+          
           <View style={styles.bannerFooter}>
-            <Text style={[styles.bannerFooterText, { color: colors.textMuted }]}>Date: {formatDate(invoice.date)}</Text>
             <Text style={[styles.bannerFooterText, { color: colors.textMuted }]}>
-              Billed By: {invoice.created_by === 'usr_admin' || invoice.created_by?.includes('admin') ? 'Admin Desk' : 'Sales Desk'}
+              Billed By: {invoice.created_by === 'usr_admin' || invoice.created_by?.includes('admin') ? 'Proprietor Desk' : 'Sales Desk'}
             </Text>
           </View>
         </Card>
+
 
         {/* Customer Box */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Billed To</Text>
@@ -354,6 +362,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  bannerHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bannerDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: SPACING.md,
+  },
+  bannerDetailsVal: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  bannerTotalHighlight: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FBBF24', // Gold Accent matching Dashboard Primary Color
+    marginTop: 2,
+  },
   bannerMetaLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -363,7 +393,7 @@ const styles = StyleSheet.create({
   bannerInvoiceNum: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#FFFFFF',
     marginTop: 2,
   },
   bannerTotal: {
@@ -372,6 +402,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginTop: 2,
   },
+
   bannerDivider: {
     height: 1,
     marginVertical: SPACING.md,

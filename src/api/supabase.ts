@@ -135,8 +135,13 @@ export const db = {
     if (!supabaseUrl) {
       const mockInvoices = await AsyncStorage.getItem('@mock_invoices');
       const invoices = mockInvoices ? JSON.parse(mockInvoices) : [];
+      
+      // Concurrently query the next invoice number right before saving
+      const nextNum = await this.getNextInvoiceNumber();
+      
       const newInvoice = {
         ...finalInvoiceData,
+        invoice_number: nextNum,
         id: 'inv_' + Date.now(),
         created_by: userId,
         created_at: new Date().toISOString(),
@@ -159,14 +164,21 @@ export const db = {
       return { data: newInvoice, error: null };
     }
 
+    // Prepare Supabase insert payload, omitting invoice_number to fire default trigger if auto-generating
+    const insertPayload = { ...finalInvoiceData, created_by: userId };
+    if (insertPayload.invoice_number === '[Auto-Generated]') {
+      delete insertPayload.invoice_number;
+    }
+
     // Insert invoice
     const { data: insertedInvoice, error: invoiceError } = await supabase
       .from('invoices')
-      .insert([{ ...finalInvoiceData, created_by: userId }])
+      .insert([insertPayload])
       .select()
       .single();
 
     if (invoiceError) return { data: null, error: invoiceError };
+
 
     // Insert invoice items
     const itemsWithInvoiceId = items.map(item => ({

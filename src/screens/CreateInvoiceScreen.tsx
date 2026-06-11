@@ -55,7 +55,8 @@ export const CreateInvoiceScreen = () => {
 
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(false);
-  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('[Auto-Generated]');
+
 
   // Customer Selection State
   const [customerModalVisible, setCustomerModalVisible] = useState(false);
@@ -169,10 +170,10 @@ export const CreateInvoiceScreen = () => {
           setInitLoading(false);
         }
       } else {
-        const nextNum = await db.getNextInvoiceNumber();
-        setInvoiceNumber(nextNum);
+        setInvoiceNumber('[Auto-Generated]');
       }
     };
+
     initInvoice();
   }, [editInvoiceId]);
 
