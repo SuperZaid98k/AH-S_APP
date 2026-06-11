@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,12 +13,59 @@ import { useSettings } from '../context/SettingsContext';
 import { Card } from '../components/Card';
 import { Toggle } from '../components/Toggle';
 import { Button } from '../components/Button';
+import { Input } from '../components/Input';
 import { useTheme, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../styles/theme';
 
 export const SettingsScreen = () => {
-  const { userProfile, logout } = useAuth();
+  const { userProfile, logout, updateProfile } = useAuth();
   const { gstEnabled, toggleGst, isDarkMode, toggleTheme } = useSettings();
   const { colors } = useTheme();
+
+  const [editName, setEditName] = useState(userProfile?.name || '');
+  const [editPhone, setEditPhone] = useState(
+    userProfile?.email?.endsWith('@ahs-billing.com')
+      ? userProfile.email.split('@')[0]
+      : userProfile?.email || ''
+  );
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    if (userProfile) {
+      setEditName(userProfile.name);
+      setEditPhone(
+        userProfile.email?.endsWith('@ahs-billing.com')
+          ? userProfile.email.split('@')[0]
+          : userProfile.email || ''
+      );
+    }
+  }, [userProfile]);
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Validation Error', 'Representative Name cannot be empty.');
+      return;
+    }
+    if (!editPhone.trim()) {
+      Alert.alert('Validation Error', 'Phone/Email cannot be empty.');
+      return;
+    }
+
+    const digitsOnly = editPhone.replace(/[^0-9]/g, '');
+    if (digitsOnly.length < 10 && !editPhone.includes('@')) {
+      Alert.alert('Validation Error', 'Please enter a valid 10-digit phone number.');
+      return;
+    }
+
+    setSavingProfile(true);
+    const result = await updateProfile(editName, editPhone);
+    setSavingProfile(false);
+
+    if (result.success) {
+      Alert.alert('Success', 'Profile details updated successfully!');
+    } else {
+      Alert.alert('Update Failed', result.error || 'Failed to save changes.');
+    }
+  };
 
   const confirmLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out from AH&S Billing?', [
@@ -50,6 +97,33 @@ export const SettingsScreen = () => {
           </View>
         </Card>
 
+        {/* Edit Profile Form */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Edit Profile Details</Text>
+        <Card style={{ marginHorizontal: SPACING.lg }}>
+          <Input
+            label="Representative Name"
+            value={editName}
+            onChangeText={setEditName}
+            placeholder="Enter your name"
+            icon="person-outline"
+          />
+          <Input
+            label="Phone Number"
+            value={editPhone}
+            onChangeText={setEditPhone}
+            placeholder="Enter phone number"
+            icon="call-outline"
+            keyboardType="phone-pad"
+          />
+          <Button
+            title={savingProfile ? "Saving Details..." : "Save Profile Details"}
+            icon="save-outline"
+            onPress={handleSaveProfile}
+            loading={savingProfile}
+            style={{ marginTop: SPACING.sm }}
+          />
+        </Card>
+
         {/* Theme Preferences Card */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Preferences</Text>
         <Card style={{ marginHorizontal: SPACING.lg, paddingVertical: SPACING.xs }}>
@@ -62,17 +136,7 @@ export const SettingsScreen = () => {
           />
         </Card>
 
-        {/* GST Billing Settings Card */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Billing Configurations</Text>
-        <Card style={{ marginHorizontal: SPACING.lg, paddingVertical: SPACING.xs }}>
-          <Toggle
-            label="Enable Goods & Services Tax (GST)"
-            description="Allows adding GST details dynamically to invoice forms."
-            value={gstEnabled}
-            onValueChange={toggleGst}
-            style={{ borderBottomWidth: 0 }}
-          />
-        </Card>
+
 
         {/* Log Out Button */}
         <Button

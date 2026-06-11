@@ -17,6 +17,7 @@ interface AuthContextType {
   login: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfileName: (name: string) => Promise<void>;
+  updateProfile: (name: string, phone: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (phone: string, password: string, name: string, role: 'admin' | 'user') => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -224,6 +225,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (newName: string, newPhone: string) => {
+    if (!userProfile) return { success: false, error: 'No user session found' };
+    try {
+      const cleanPhone = newPhone.trim();
+      const isEmail = cleanPhone.includes('@');
+      const emailValue = isEmail ? cleanPhone : `${cleanPhone.replace(/[^0-9+]/g, '')}@ahs-billing.com`;
+      
+      const updatedProfile = { ...userProfile, name: newName.trim(), email: emailValue };
+      
+      if (!isSupabaseConfigured) {
+        // Update mock session
+        setUser({ ...user, email: emailValue });
+        setUserProfile(updatedProfile);
+        await AsyncStorage.setItem('@mock_session', JSON.stringify(updatedProfile));
+        
+        // Update mock users list
+        const createdUsersStr = await AsyncStorage.getItem('@mock_created_users');
+        if (createdUsersStr) {
+          const createdUsers = JSON.parse(createdUsersStr);
+          const updatedUsers = createdUsers.map((u: any) =>
+            u.id === userProfile.id ? { ...u, name: newName.trim(), email: emailValue } : u
+          );
+          await AsyncStorage.setItem('@mock_created_users', JSON.stringify(updatedUsers));
+        }
+        return { success: true };
+      }
+
+      // Supabase Mode
+      // 1. Update profiles table (name)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ name: newName.trim() })
+        .eq('id', userProfile.id);
+
+      if (profileError) throw profileError;
+
+      // 2. Update auth.users (email/phone mapping) if it has changed
+      if (emailValue !== userProfile.email) {
+        const { error: authError } = await supabase.auth.updateUser({
+          email: emailValue,
+        });
+        if (authError) {
+          throw authError;
+        }
+      }
+
+      // Update local state
+      setUser({ ...user, email: emailValue });
+      setUserProfile(updatedProfile);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
+      return { success: false, error: error.message || 'Failed to update profile details.' };
+    }
+  };
+
   const signUp = async (phone: string, password: string, name: string, role: 'admin' | 'user') => {
     setIsLoading(true);
     try {
@@ -292,6 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         updateProfileName,
+        updateProfile,
         signUp,
       }}
 

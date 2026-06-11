@@ -273,33 +273,7 @@ export const DashboardScreen = () => {
         </TouchableOpacity>
 
 
-        {/* Sales Breakdown by User (Admin Only) */}
-        {userProfile?.role === 'admin' && Object.keys(salesByUser).length > 0 && (
-          <View style={styles.breakdownSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Sales Desk Breakdown</Text>
-            <Card style={[styles.breakdownCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-              {Object.values(salesByUser).map((seller: any, idx) => (
-                <View 
-                  key={idx} 
-                  style={[
-                    styles.sellerRow, 
-                    { borderBottomColor: colors.border },
-                    idx === Object.keys(salesByUser).length - 1 && { borderBottomWidth: 0, paddingBottom: 0 }
-                  ]}
-                >
-                  <View style={styles.sellerMeta}>
-                    <Ionicons name="person-circle-outline" size={22} color={colors.textMuted} />
-                    <Text style={[styles.sellerName, { color: colors.text }]}>{seller.name}</Text>
-                  </View>
-                  <View style={styles.sellerData}>
-                    <Text style={[styles.sellerAmt, { color: colors.secondary }]}>{formatCurrency(seller.amount)}</Text>
-                    <Text style={[styles.sellerCount, { color: colors.textMuted }]}>{seller.count} Bills</Text>
-                  </View>
-                </View>
-              ))}
-            </Card>
-          </View>
-        )}
+
 
         {/* Recent Invoices list */}
         <View style={styles.recentSection}>

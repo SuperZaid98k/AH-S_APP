@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   TouchableWithoutFeedback,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -157,7 +158,11 @@ export const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
           )}
 
           {/* Menu Items */}
-          <View style={styles.menuList}>
+          <ScrollView
+            style={styles.menuScroll}
+            contentContainerStyle={styles.menuContent}
+            showsVerticalScrollIndicator={false}
+          >
             <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Dashboard')}>
               <Ionicons name="home-outline" size={22} color={colors.secondary} style={styles.menuIcon} />
               <Text style={[styles.menuText, { color: colors.text }]}>Dashboard</Text>
@@ -193,40 +198,23 @@ export const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
               <Text style={[styles.menuText, { color: colors.text }]}>Balance Ledger</Text>
             </TouchableOpacity>
 
-          </View>
-
-          {/* Footer Area */}
-          <View style={[styles.footer, { borderTopColor: colors.border }]}>
-            {/* Quick Theme Toggle */}
-            <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme} activeOpacity={0.8}>
-              <View style={styles.themeToggleLeft}>
-                <Ionicons
-                  name={isDarkMode ? 'moon' : 'sunny-outline'}
-                  size={20}
-                  color={isDarkMode ? colors.secondary : '#EAB308'}
-                />
-                <Text style={[styles.themeToggleText, { color: colors.text }]}>Dark Mode</Text>
-              </View>
-              <View style={[
-                styles.switchTrack,
-                { backgroundColor: isDarkMode ? colors.secondary : colors.border }
-              ]}>
-                <View style={[
-                  styles.switchThumb,
-                  {
-                    backgroundColor: colors.white,
-                    alignSelf: isDarkMode ? 'flex-end' : 'flex-start'
-                  }
-                ]} />
-              </View>
+            <TouchableOpacity style={styles.menuItem} onPress={toggleTheme}>
+              <Ionicons
+                name={isDarkMode ? 'sunny-outline' : 'moon-outline'}
+                size={22}
+                color={colors.secondary}
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuText, { color: colors.text }]}>
+                {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+              </Text>
             </TouchableOpacity>
 
-            {/* Logout */}
-            <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-              <Ionicons name="log-out-outline" size={22} color={colors.danger} />
-              <Text style={[styles.signOutText, { color: colors.danger }]}>Sign Out</Text>
+            <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
+              <Ionicons name="log-out-outline" size={22} color={colors.danger} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: colors.danger }]}>Sign Out</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </SafeAreaView>
       </Animated.View>
     </View>
@@ -326,8 +314,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  menuList: {
+  menuScroll: {
     flex: 1,
+  },
+  menuContent: {
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
   },

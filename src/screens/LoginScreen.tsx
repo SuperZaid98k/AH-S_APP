@@ -177,29 +177,7 @@ export const LoginScreen = () => {
               />
             )}
 
-            {isSignUp && (
-              <View style={styles.roleContainer}>
-                <Text style={styles.roleLabel}>Account Role</Text>
-                <View style={styles.rolePillsRow}>
-                  <TouchableOpacity
-                    style={[styles.rolePill, role === 'user' && styles.rolePillActive]}
-                    onPress={() => setRole('user')}
-                  >
-                    <Text style={[styles.rolePillText, role === 'user' && styles.rolePillTextActive]}>
-                      Sales Desk
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.rolePill, role === 'admin' && styles.rolePillActive]}
-                    onPress={() => setRole('admin')}
-                  >
-                    <Text style={[styles.rolePillText, role === 'admin' && styles.rolePillTextActive]}>
-                      Proprietor (Admin)
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+
 
             <Button
               title={isSignUp ? "Register Account" : "Authenticate Account"}
