@@ -14,10 +14,10 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfileName: (name: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string, role: 'admin' | 'user') => Promise<{ success: boolean; error?: string }>;
+  signUp: (phone: string, password: string, name: string, role: 'admin' | 'user') => Promise<{ success: boolean; error?: string }>;
 }
 
 
@@ -90,14 +90,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkSession();
   }, [isSupabaseConfigured]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (emailOrPhone: string, password: string) => {
     setIsLoading(true);
     try {
-      const cleanEmail = email.trim().toLowerCase();
+      const input = emailOrPhone.trim().toLowerCase();
+      const isEmail = input.includes('@');
+      const emailValue = isEmail ? input : `${input.replace(/[^0-9+]/g, '')}@ahs-billing.com`;
       
       if (!isSupabaseConfigured) {
         // Mock credentials validation
-        if (cleanEmail === 'admin@ahs.com' && password === 'admin123') {
+        if (emailValue === 'admin@ahs.com' && password === 'admin123') {
           const profile: UserProfile = {
             id: 'usr_admin',
             name: 'Ahmad Hasan (Admin)',
@@ -110,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await AsyncStorage.setItem('@mock_session', JSON.stringify(profile));
           setIsLoading(false);
           return { success: true };
-        } else if (cleanEmail === 'user@ahs.com' && password === 'user123') {
+        } else if (emailValue === 'user@ahs.com' && password === 'user123') {
           const profile: UserProfile = {
             id: 'usr_sales_1',
             name: 'Zaid Hasan (Sales)',
@@ -127,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Check `@mock_created_users` inside AsyncStorage
           const createdUsersStr = await AsyncStorage.getItem('@mock_created_users');
           const createdUsers = createdUsersStr ? JSON.parse(createdUsersStr) : [];
-          const matchedUser = createdUsers.find((u: any) => u.email === cleanEmail && u.password === password);
+          const matchedUser = createdUsers.find((u: any) => u.email === emailValue && u.password === password);
           if (matchedUser) {
             const profile: UserProfile = {
               id: matchedUser.id,
@@ -146,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           return {
             success: false,
-            error: 'Invalid credentials. Try admin@ahs.com (admin123) or user@ahs.com (user123) or register a new user.',
+            error: 'Invalid credentials. Try registering a new user or check phone number.',
           };
         }
       }
@@ -154,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Supabase Login
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
+        email: emailValue,
         password,
       });
 
@@ -222,28 +224,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, role: 'admin' | 'user') => {
+  const signUp = async (phone: string, password: string, name: string, role: 'admin' | 'user') => {
     setIsLoading(true);
     try {
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanPhone = phone.trim().toLowerCase();
+      const isEmail = cleanPhone.includes('@');
+      const emailValue = isEmail ? cleanPhone : `${cleanPhone.replace(/[^0-9+]/g, '')}@ahs-billing.com`;
       
       if (!isSupabaseConfigured) {
         const createdUsersStr = await AsyncStorage.getItem('@mock_created_users');
         const createdUsers = createdUsersStr ? JSON.parse(createdUsersStr) : [];
         
         // Check if user already exists
-        const userExists = createdUsers.some((u: any) => u.email === cleanEmail) ||
-                           cleanEmail === 'admin@ahs.com' ||
-                           cleanEmail === 'user@ahs.com';
+        const userExists = createdUsers.some((u: any) => u.email === emailValue) ||
+                           emailValue === 'admin@ahs.com' ||
+                           emailValue === 'user@ahs.com';
         if (userExists) {
           setIsLoading(false);
-          return { success: false, error: 'User already exists with this email address.' };
+          return { success: false, error: 'User already exists with this phone number.' };
         }
 
         const newId = 'usr_' + Date.now();
         const newUser = {
           id: newId,
-          email: cleanEmail,
+          email: emailValue,
           password: password,
           name: name.trim(),
           role: role,
@@ -257,7 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Supabase Signup
       const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
+        email: emailValue,
         password,
         options: {
           data: {

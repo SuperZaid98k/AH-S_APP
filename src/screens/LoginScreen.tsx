@@ -22,7 +22,7 @@ export const LoginScreen = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   
   // Shared States
-  const [email, setEmail] = useState('');
+  const [phoneOrEmail, setPhoneOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,15 +38,24 @@ export const LoginScreen = () => {
     setPassword('');
     setConfirmPassword('');
     setName('');
+    setPhoneOrEmail('');
   };
 
   const handleSubmit = async () => {
     if (isSignUp) {
       // Sign Up Logic
-      if (!email || !password || !name || !confirmPassword) {
+      if (!phoneOrEmail || !password || !name || !confirmPassword) {
         setError('Please fill in all registration fields.');
         return;
       }
+      
+      // Validate phone number format (must contain at least 10 digits)
+      const digitsOnly = phoneOrEmail.replace(/[^0-9]/g, '');
+      if (digitsOnly.length < 10) {
+        setError('Please enter a valid 10-digit phone number.');
+        return;
+      }
+
       if (password !== confirmPassword) {
         setError('Passwords do not match.');
         return;
@@ -58,13 +67,13 @@ export const LoginScreen = () => {
       
       setError('');
       setLoading(true);
-      const result = await signUp(email, password, name, role);
+      const result = await signUp(phoneOrEmail, password, name, role);
       setLoading(false);
       
       if (result.success) {
         Alert.alert(
           'Account Created',
-          'Your account has been registered successfully. If email confirmation is enabled, check your inbox to verify before signing in.',
+          'Your account has been registered successfully. You can now sign in using your phone number.',
           [{ text: 'Sign In Now', onPress: handleToggleMode }]
         );
       } else {
@@ -72,26 +81,26 @@ export const LoginScreen = () => {
         if (msg.includes('only request this after 2 seconds')) {
           msg = 'Signup request sent too quickly. Please wait a few seconds and try again.';
         } else if (msg.includes('Email address') && msg.includes('invalid')) {
-          msg = 'The email format is invalid, or email signups are restricted in Supabase Auth settings.';
+          msg = 'The phone number format is invalid, or signups are restricted in Supabase.';
         }
         setError(msg);
       }
     } else {
       // Sign In Logic
-      if (!email || !password) {
+      if (!phoneOrEmail || !password) {
         setError('Please fill in all credentials.');
         return;
       }
       
       setError('');
       setLoading(true);
-      const result = await login(email, password);
+      const result = await login(phoneOrEmail, password);
       setLoading(false);
       
       if (!result.success) {
         let msg = result.error || 'Login failed. Please check credentials.';
         if (msg.includes('Email not confirmed')) {
-          msg = 'Email not confirmed. Please check your verification email, or disable "Confirm email" in your Supabase Auth provider settings.';
+          msg = 'Account not confirmed. Please ensure verification is disabled in your Supabase Auth provider settings.';
         }
         setError(msg);
       }
@@ -137,13 +146,13 @@ export const LoginScreen = () => {
             )}
 
             <Input
-              label="Email Address"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              icon="mail-outline"
-              keyboardType="email-address"
-              onClear={() => setEmail('')}
+              label={isSignUp ? "Phone Number" : "Phone Number or Email"}
+              value={phoneOrEmail}
+              onChangeText={setPhoneOrEmail}
+              placeholder={isSignUp ? "Enter your phone number" : "Enter phone or email"}
+              icon={isSignUp ? "call-outline" : "mail-outline"}
+              keyboardType={isSignUp ? "phone-pad" : "default"}
+              onClear={() => setPhoneOrEmail('')}
             />
 
             <Input

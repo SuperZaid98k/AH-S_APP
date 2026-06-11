@@ -9,31 +9,23 @@ import {
   ViewStyle,
   TextStyle,
   StyleProp,
+  TextInputProps,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../styles/theme';
 
-interface InputProps {
+interface InputProps extends TextInputProps {
   label?: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: KeyboardTypeOptions;
   error?: string;
   icon?: keyof typeof Ionicons.glyphMap;
   onClear?: () => void;
-  editable?: boolean;
-  style?: StyleProp<ViewStyle>;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
-  multiline?: boolean;
-  numberOfLines?: number;
 }
 
-export const Input: React.FC<InputProps> = ({
+export const Input = React.forwardRef<TextInput, InputProps>(({
   label,
-  value,
+  value = '',
   onChangeText,
   placeholder,
   secureTextEntry = false,
@@ -47,7 +39,8 @@ export const Input: React.FC<InputProps> = ({
   inputStyle,
   multiline = false,
   numberOfLines,
-}) => {
+  ...restProps
+}, ref) => {
   const { colors, isDarkMode } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(!secureTextEntry);
@@ -95,6 +88,7 @@ export const Input: React.FC<InputProps> = ({
         )}
         
         <TextInput
+          ref={ref}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -108,6 +102,7 @@ export const Input: React.FC<InputProps> = ({
           numberOfLines={numberOfLines}
           textAlignVertical={multiline ? 'top' : 'center'}
           style={[styles.input, textInputStyleDynamic, !editable && { color: colors.textMuted }, inputStyle, multiline && { minHeight: 60 }]}
+          {...restProps}
         />
         
         {value.length > 0 && onClear && editable && (
@@ -134,7 +129,7 @@ export const Input: React.FC<InputProps> = ({
       {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
     </View>
   );
-};
+});
 
 
 const styles = StyleSheet.create({

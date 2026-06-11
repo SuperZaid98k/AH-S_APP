@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -77,6 +77,11 @@ export const CreateInvoiceScreen = () => {
   const [manualProdBrand, setManualProdBrand] = useState('');
   const [manualProdQty, setManualProdQty] = useState('1');
   const [manualProdRate, setManualProdRate] = useState('');
+
+  // Input references for keyboard focus navigation
+  const brandInputRef = useRef<any>(null);
+  const qtyInputRef = useRef<any>(null);
+  const priceInputRef = useRef<any>(null);
 
   // Inline Toggles & Financials State
   const [gstToggled, setGstToggled] = useState(false);
@@ -236,6 +241,22 @@ export const CreateInvoiceScreen = () => {
     setManualProdRate('');
   };
 
+  const handleQtySubmit = () => {
+    if (manualProdRate.trim() === '') {
+      priceInputRef.current?.focus();
+    } else {
+      handleAddItem();
+    }
+  };
+
+  const handlePriceSubmit = () => {
+    if (manualProdQty.trim() === '') {
+      qtyInputRef.current?.focus();
+    } else {
+      handleAddItem();
+    }
+  };
+
   const handleDeleteItem = (index: number) => {
     const updated = items.filter((_, idx) => idx !== index);
     setItems(updated);
@@ -244,6 +265,40 @@ export const CreateInvoiceScreen = () => {
   const handleSaveInvoice = async () => {
     setLoading(true);
     try {
+      // 1. Gather all items, including any unsaved item in the inputs
+      let finalItems = [...items];
+      const qty = parseInt(manualProdQty, 10);
+      const rate = parseFloat(manualProdRate);
+      const hasUnsavedItem = !isNaN(qty) && qty > 0 && !isNaN(rate) && rate >= 0 && manualProdRate.trim() !== '';
+      
+      if (hasUnsavedItem) {
+        const name = manualProdName.trim() || 'General Item';
+        const unsavedItem: InvoiceItem = {
+          product_id: '',
+          product_name: name,
+          brand: manualProdBrand.trim() || undefined,
+          quantity: qty,
+          price: rate,
+          total: qty * rate,
+        };
+        finalItems.push(unsavedItem);
+      }
+
+      // 2. Disallow empty invoices
+      if (finalItems.length === 0) {
+        Alert.alert('Validation Error', 'Please add at least one product item to the invoice.');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Recalculate totals based on finalItems (including unsaved)
+      const finalTotals = calculateInvoiceTotals(
+        finalItems.map(item => ({ quantity: item.quantity, price: item.price })),
+        discountToggled ? discountAmount : '',
+        gstToggled,
+        gstToggled ? selectedGstRate : 0
+      );
+
       const invoiceData = {
         invoice_number: invoiceNumber,
         customer_id: selectedCustomer?.id || null,
@@ -253,17 +308,16 @@ export const CreateInvoiceScreen = () => {
         customer_address: custAddress.trim() || null,
         date: new Date().toISOString(),
         gst_enabled: gstToggled,
-        gst_rate: totals.gstRate,
-        gst_amount: totals.gstAmount,
-        discount: totals.discount,
-        subtotal: totals.subtotal,
-        total: totals.total,
+        gst_rate: finalTotals.gstRate,
+        gst_amount: finalTotals.gstAmount,
+        discount: finalTotals.discount,
+        subtotal: finalTotals.subtotal,
+        total: finalTotals.total,
         status: isPaid ? 'paid' : 'balance',
       };
 
-
       if (editInvoiceId) {
-        const result = await db.updateInvoice(editInvoiceId, invoiceData, items);
+        const result = await db.updateInvoice(editInvoiceId, invoiceData, finalItems);
         setLoading(false);
         if (result.error) {
           Alert.alert('Database Error', result.error.message || 'Failed to update invoice.');
@@ -276,7 +330,7 @@ export const CreateInvoiceScreen = () => {
           ]);
         }
       } else {
-        const result = await db.createInvoice(invoiceData, items, userProfile?.id || '');
+        const result = await db.createInvoice(invoiceData, finalItems, userProfile?.id || '');
         setLoading(false);
         if (result.error) {
           Alert.alert('Database Error', result.error.message || 'Failed to save invoice.');
@@ -417,18 +471,24 @@ export const CreateInvoiceScreen = () => {
             onChangeText={setManualProdName}
             placeholder="e.g. Cotton Lungi (blank defaults to General Item)"
             icon="cube-outline"
+            returnKeyType="next"
+            onSubmitEditing={() => brandInputRef.current?.focus()}
           />
 
           <Input
+            ref={brandInputRef}
             label="Brand (Optional)"
             value={manualProdBrand}
             onChangeText={setManualProdBrand}
             placeholder="e.g. AH&S Special"
             icon="ribbon-outline"
+            returnKeyType="next"
+            onSubmitEditing={() => qtyInputRef.current?.focus()}
           />
 
           <View style={{ flexDirection: 'row', gap: SPACING.md }}>
             <Input
+              ref={qtyInputRef}
               label="Quantity"
               value={manualProdQty}
               onChangeText={setManualProdQty}
@@ -436,8 +496,11 @@ export const CreateInvoiceScreen = () => {
               keyboardType="numeric"
               icon="calculator-outline"
               containerStyle={{ flex: 1 }}
+              returnKeyType="next"
+              onSubmitEditing={handleQtySubmit}
             />
             <Input
+              ref={priceInputRef}
               label="Price (per unit) (₹)"
               value={manualProdRate}
               onChangeText={setManualProdRate}
@@ -445,6 +508,8 @@ export const CreateInvoiceScreen = () => {
               keyboardType="numeric"
               icon="cash-outline"
               containerStyle={{ flex: 1 }}
+              returnKeyType="done"
+              onSubmitEditing={handlePriceSubmit}
             />
           </View>
 

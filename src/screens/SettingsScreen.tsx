@@ -39,7 +39,9 @@ export const SettingsScreen = () => {
             <View style={styles.profileMeta}>
               <Text style={[styles.profileName, { color: colors.text }]}>{userProfile?.name}</Text>
               <Text style={[styles.profileEmail, { color: colors.textMuted }]}>
-                {userProfile?.email || 'Offline Representative'}
+                {userProfile?.email?.endsWith('@ahs-billing.com')
+                  ? `Phone: ${userProfile.email.split('@')[0]}`
+                  : userProfile?.email || 'Offline Representative'}
               </Text>
               <Text style={[styles.profileRole, { color: colors.secondary }]}>
                 Role: {userProfile?.role === 'admin' ? 'Proprietor (Admin)' : 'Sales Agent'}
