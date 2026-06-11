@@ -244,12 +244,14 @@ export const db = {
 
     if (deleteError) return { data: null, error: deleteError };
 
-    const itemsWithInvoiceId = items.map(item => ({
-      ...item,
-      invoice_id: invoiceId,
-      product_id: null, // Always null for manual entry
-      id: undefined, 
-    }));
+    const itemsWithInvoiceId = items.map(item => {
+      const { id, ...itemWithoutId } = item;
+      return {
+        ...itemWithoutId,
+        invoice_id: invoiceId,
+        product_id: null, // Always null for manual entry
+      };
+    });
 
     const { error: insertError } = await supabase.from('invoice_items').insert(itemsWithInvoiceId);
     if (insertError) return { data: null, error: insertError };

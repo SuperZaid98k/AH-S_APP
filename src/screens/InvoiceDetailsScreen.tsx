@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -129,17 +129,13 @@ export const InvoiceDetailsScreen = () => {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Invoice Detail</Text>
         
-        {userProfile?.role === 'admin' ? (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CreateInvoice', { editInvoiceId: invoice.id })}
-            style={[styles.editBtn, { backgroundColor: colors.secondary }]}
-          >
-            <Ionicons name="pencil" size={16} color="#000000" />
-            <Text style={styles.editBtnText}>Edit</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 56 }} />
-        )}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('CreateInvoice', { editInvoiceId: invoice.id })}
+          style={[styles.editBtn, { backgroundColor: colors.secondary }]}
+        >
+          <Ionicons name="pencil" size={16} color="#000000" />
+          <Text style={styles.editBtnText}>Edit</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollBody}>
