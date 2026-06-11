@@ -83,6 +83,8 @@ export const CreateInvoiceScreen = () => {
   
   const [discountToggled, setDiscountToggled] = useState(false);
   const [discountAmount, setDiscountAmount] = useState('');
+  const [isPaid, setIsPaid] = useState(true);
+
 
   // Dynamic calculations
   const totals = calculateInvoiceTotals(
@@ -155,7 +157,12 @@ export const CreateInvoiceScreen = () => {
                 address: data.customer_address,
               });
             }
+
+            if (data.status) {
+              setIsPaid(data.status === 'paid');
+            }
           }
+
         } catch (err) {
           console.error(err);
         } finally {
@@ -250,7 +257,9 @@ export const CreateInvoiceScreen = () => {
         discount: totals.discount,
         subtotal: totals.subtotal,
         total: totals.total,
+        status: isPaid ? 'paid' : 'balance',
       };
+
 
       if (editInvoiceId) {
         const result = await db.updateInvoice(editInvoiceId, invoiceData, items);
@@ -458,10 +467,22 @@ export const CreateInvoiceScreen = () => {
         {/* Financials & Toggles Block */}
         <Text style={styles.sectionTitle}>Invoice Summary & Settings</Text>
         <Card style={styles.summaryCard}>
+          {/* Payment Status Toggle */}
+          <View style={styles.toggleRow}>
+            <Toggle
+              label="Payment Collected (Paid)"
+              description="Uncheck to save this invoice as an Outstanding Balance."
+              value={isPaid}
+              onValueChange={setIsPaid}
+              style={{ borderBottomWidth: 0, paddingVertical: SPACING.sm }}
+            />
+          </View>
+
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryVal}>{formatCurrency(totals.subtotal)}</Text>
           </View>
+
 
           {/* Inline switches for GST and Discount */}
           <View style={styles.toggleRow}>

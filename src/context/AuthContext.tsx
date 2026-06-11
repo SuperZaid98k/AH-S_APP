@@ -17,7 +17,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfileName: (name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, role: 'admin' | 'user') => Promise<{ success: boolean; error?: string }>;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -122,13 +124,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           return { success: true };
         } else {
+          // Check `@mock_created_users` inside AsyncStorage
+          const createdUsersStr = await AsyncStorage.getItem('@mock_created_users');
+          const createdUsers = createdUsersStr ? JSON.parse(createdUsersStr) : [];
+          const matchedUser = createdUsers.find((u: any) => u.email === cleanEmail && u.password === password);
+          if (matchedUser) {
+            const profile: UserProfile = {
+              id: matchedUser.id,
+              name: matchedUser.name,
+              role: matchedUser.role,
+              email: matchedUser.email,
+            };
+            setUser({ id: profile.id, email: profile.email });
+            setUserProfile(profile);
+            setIsAuthenticated(true);
+            await AsyncStorage.setItem('@mock_session', JSON.stringify(profile));
+            setIsLoading(false);
+            return { success: true };
+          }
+
           setIsLoading(false);
           return {
             success: false,
-            error: 'Invalid mock credentials. Try admin@ahs.com (admin123) or user@ahs.com (user123)',
+            error: 'Invalid credentials. Try admin@ahs.com (admin123) or user@ahs.com (user123) or register a new user.',
           };
         }
       }
+
 
       // Supabase Login
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -200,6 +222,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signUp = async (email: string, password: string, name: string, role: 'admin' | 'user') => {
+    setIsLoading(true);
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      
+      if (!isSupabaseConfigured) {
+        const createdUsersStr = await AsyncStorage.getItem('@mock_created_users');
+        const createdUsers = createdUsersStr ? JSON.parse(createdUsersStr) : [];
+        
+        // Check if user already exists
+        const userExists = createdUsers.some((u: any) => u.email === cleanEmail) ||
+                           cleanEmail === 'admin@ahs.com' ||
+                           cleanEmail === 'user@ahs.com';
+        if (userExists) {
+          setIsLoading(false);
+          return { success: false, error: 'User already exists with this email address.' };
+        }
+
+        const newId = 'usr_' + Date.now();
+        const newUser = {
+          id: newId,
+          email: cleanEmail,
+          password: password,
+          name: name.trim(),
+          role: role,
+        };
+
+        createdUsers.push(newUser);
+        await AsyncStorage.setItem('@mock_created_users', JSON.stringify(createdUsers));
+        setIsLoading(false);
+        return { success: true };
+      }
+
+      // Supabase Signup
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+            role: role,
+          },
+        },
+      });
+
+      if (error) throw error;
+      setIsLoading(false);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Sign Up error:', error);
+      setIsLoading(false);
+      return { success: false, error: error.message || 'An unknown error occurred during registration.' };
+    }
+  };
+
+
   return (
     <AuthContext.Provider
       value={{
@@ -210,7 +288,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         updateProfileName,
+        signUp,
       }}
+
     >
       {children}
     </AuthContext.Provider>

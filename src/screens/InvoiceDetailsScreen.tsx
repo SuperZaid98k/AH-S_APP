@@ -151,12 +151,26 @@ export const InvoiceDetailsScreen = () => {
           <View style={styles.bannerRow}>
             <View>
               <Text style={styles.bannerMetaLabel}>INVOICE NUMBER</Text>
-              <Text style={styles.bannerInvoiceNum}>{invoice.invoice_number}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <Text style={styles.bannerInvoiceNum}>{invoice.invoice_number}</Text>
+                <View style={[
+                  styles.statusBadge,
+                  { backgroundColor: invoice.status === 'balance' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }
+                ]}>
+                  <Text style={[
+                    styles.statusBadgeText,
+                    { color: invoice.status === 'balance' ? colors.danger : colors.success }
+                  ]}>
+                    {invoice.status === 'balance' ? 'BALANCE' : 'PAID'}
+                  </Text>
+                </View>
+              </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.bannerMetaLabel}>GRAND TOTAL</Text>
               <Text style={styles.bannerTotal}>{formatCurrency(invoice.total)}</Text>
             </View>
+
           </View>
           <View style={[styles.bannerDivider, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)' }]} />
           <View style={styles.bannerFooter}>
@@ -458,4 +472,18 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
   },
+  statusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignSelf: 'center',
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 });
+

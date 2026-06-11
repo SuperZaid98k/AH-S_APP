@@ -17,6 +17,8 @@ import { InvoiceHistoryScreen } from './src/screens/InvoiceHistoryScreen';
 import { InvoiceDetailsScreen } from './src/screens/InvoiceDetailsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { NotepadScreen } from './src/screens/NotepadScreen';
+import { BalanceListScreen } from './src/screens/BalanceListScreen';
+
 
 
 // Theme
@@ -34,7 +36,9 @@ type RootStackParamList = {
   InvoiceDetails: { invoiceId: string };
   Settings: undefined;
   Notepad: undefined;
+  BalanceList: undefined;
 };
+
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -111,6 +115,12 @@ const RootNavigator = () => {
             component={NotepadScreen}
             options={{ title: 'AH&S Notepad' }}
           />
+          <Stack.Screen
+            name="BalanceList"
+            component={BalanceListScreen}
+            options={{ title: 'Balance Ledger' }}
+          />
+
 
         </>
       )}

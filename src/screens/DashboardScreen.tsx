@@ -28,7 +28,9 @@ type RootStackParamList = {
   CustomerManagement: undefined;
   Settings: undefined;
   InvoiceDetails: { invoiceId: string };
+  BalanceList: undefined;
 };
+
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -43,8 +45,10 @@ export const DashboardScreen = () => {
   // Analytics State
   const [totalSales, setTotalSales] = useState(0);
   const [invoiceCount, setInvoiceCount] = useState(0);
+  const [outstandingBalance, setOutstandingBalance] = useState(0);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [salesByUser, setSalesByUser] = useState<Record<string, { name: string; amount: number; count: number }>>({});
+
 
   // Configure Hamburger Menu icon in the Navigation Header
   useEffect(() => {
@@ -74,6 +78,13 @@ export const DashboardScreen = () => {
         setInvoiceCount(invoices.length);
         setRecentInvoices(invoices.slice(0, 3)); // Pick 3 most recent
 
+        // Calculate outstanding balance total
+        const balanceTotal = invoices
+          .filter((inv: any) => inv.status === 'balance')
+          .reduce((sum: number, inv: any) => sum + Number(inv.total), 0);
+        setOutstandingBalance(balanceTotal);
+
+
         // Calculate sales breakdown by user if admin
         if (userProfile.role === 'admin') {
           const breakdown: typeof salesByUser = {};
@@ -101,6 +112,7 @@ export const DashboardScreen = () => {
       } else {
         setTotalSales(0);
         setInvoiceCount(0);
+        setOutstandingBalance(0);
         setRecentInvoices([]);
         setSalesByUser({});
       }
@@ -110,6 +122,7 @@ export const DashboardScreen = () => {
       setRefreshing(false);
     }
   }, [userProfile]);
+
 
   useFocusEffect(
     useCallback(() => {
@@ -238,6 +251,27 @@ export const DashboardScreen = () => {
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </TouchableOpacity>
+
+        {/* Balance Ledger Row */}
+        <TouchableOpacity
+          style={[styles.terminalRow, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('BalanceList')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.terminalRowLeft}>
+            <View style={[styles.terminalCartIconBox, { backgroundColor: '#B91C1C' }]}>
+              <Ionicons name="wallet-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Balance Ledger</Text>
+              <Text style={styles.terminalRowSub}>
+                OUTSTANDING BALANCE: {formatCurrency(outstandingBalance)}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
 
         {/* Sales Breakdown by User (Admin Only) */}
         {userProfile?.role === 'admin' && Object.keys(salesByUser).length > 0 && (

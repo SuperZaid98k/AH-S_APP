@@ -115,6 +115,14 @@ export const InvoiceHistoryScreen = () => {
                     {formatCurrency(item.total)}
                   </Text>
                   <View style={styles.badgeRow}>
+                    <View style={[
+                      styles.badge, 
+                      { backgroundColor: item.status === 'balance' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }
+                    ]}>
+                      <Text style={[styles.badgeText, { color: item.status === 'balance' ? colors.danger : colors.success }]}>
+                        {item.status === 'balance' ? 'BAL' : 'PAID'}
+                      </Text>
+                    </View>
                     {item.gst_enabled && item.gst_amount > 0 ? (
                       <View style={[
                         styles.badge, 
@@ -132,6 +140,7 @@ export const InvoiceHistoryScreen = () => {
                       </View>
                     ) : null}
                   </View>
+
                 </View>
               </View>
 

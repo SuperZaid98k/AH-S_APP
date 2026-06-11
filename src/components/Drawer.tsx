@@ -31,7 +31,9 @@ type RootStackParamList = {
   CustomerManagement: undefined;
   Settings: undefined;
   Notepad: undefined;
+  BalanceList: undefined;
 };
+
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -185,6 +187,12 @@ export const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
               <Ionicons name="journal-outline" size={22} color={colors.secondary} style={styles.menuIcon} />
               <Text style={[styles.menuText, { color: colors.text }]}>Notepad</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('BalanceList')}>
+              <Ionicons name="wallet-outline" size={22} color={colors.secondary} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: colors.text }]}>Balance Ledger</Text>
+            </TouchableOpacity>
+
           </View>
 
           {/* Footer Area */}

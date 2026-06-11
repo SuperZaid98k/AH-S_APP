@@ -71,11 +71,16 @@ export const db = {
     if (!supabaseUrl) {
       const mockInvoices = await AsyncStorage.getItem('@mock_invoices');
       const data = mockInvoices ? JSON.parse(mockInvoices) : [];
+      // Ensure all mock invoices have a status field (default to 'paid' if missing)
+      const sanitized = data.map((inv: any) => ({
+        status: 'paid', // Default fallback
+        ...inv,
+      }));
       // Filter sales by user if not admin
       if (role !== 'admin') {
-        return { data: data.filter((inv: any) => inv.created_by === userId), error: null };
+        return { data: sanitized.filter((inv: any) => inv.created_by === userId), error: null };
       }
-      return { data, error: null };
+      return { data: sanitized, error: null };
     }
 
     let query = supabase.from('invoices').select('*').order('created_at', { ascending: false });
@@ -92,12 +97,15 @@ export const db = {
       const invoice = invoices.find((i: any) => i.id === invoiceId);
       if (!invoice) return { data: null, error: { message: 'Invoice not found' } };
 
+      const sanitizedInvoice = { status: 'paid', ...invoice };
+
       const mockItems = await AsyncStorage.getItem('@mock_invoice_items');
       const items = mockItems ? JSON.parse(mockItems) : [];
       const invoiceItems = items.filter((item: any) => item.invoice_id === invoiceId);
 
-      return { data: { ...invoice, invoice_items: invoiceItems }, error: null };
+      return { data: { ...sanitizedInvoice, invoice_items: invoiceItems }, error: null };
     }
+
 
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -336,5 +344,20 @@ export const db = {
 
     return supabase.from('notes').delete().eq('id', noteId);
   },
+
+  async updateInvoiceStatus(invoiceId: string, status: 'paid' | 'balance') {
+    if (!supabaseUrl) {
+      const mockInvoices = await AsyncStorage.getItem('@mock_invoices');
+      const invoices = mockInvoices ? JSON.parse(mockInvoices) : [];
+      const updated = invoices.map((inv: any) =>
+        inv.id === invoiceId ? { ...inv, status } : inv
+      );
+      await AsyncStorage.setItem('@mock_invoices', JSON.stringify(updated));
+      return { error: null };
+    }
+
+    return supabase.from('invoices').update({ status }).eq('id', invoiceId);
+  },
 };
+
 

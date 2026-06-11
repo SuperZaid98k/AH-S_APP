@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -17,25 +18,86 @@ import { Card } from '../components/Card';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../styles/theme';
 
 export const LoginScreen = () => {
-  const { login } = useAuth();
+  const { login, signUp } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  
+  // Shared States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please fill in all credentials.');
-      return;
-    }
+  // Sign Up Specific States
+  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'user'>('user');
+
+  const handleToggleMode = () => {
+    setIsSignUp(!isSignUp);
     setError('');
-    setLoading(true);
-    const result = await login(email, password);
-    setLoading(false);
-    if (!result.success) {
-      setError(result.error || 'Login failed. Please try again.');
+    setPassword('');
+    setConfirmPassword('');
+    setName('');
+  };
+
+  const handleSubmit = async () => {
+    if (isSignUp) {
+      // Sign Up Logic
+      if (!email || !password || !name || !confirmPassword) {
+        setError('Please fill in all registration fields.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters long.');
+        return;
+      }
+      
+      setError('');
+      setLoading(true);
+      const result = await signUp(email, password, name, role);
+      setLoading(false);
+      
+      if (result.success) {
+        Alert.alert(
+          'Account Created',
+          'Your account has been registered successfully. If email confirmation is enabled, check your inbox to verify before signing in.',
+          [{ text: 'Sign In Now', onPress: handleToggleMode }]
+        );
+      } else {
+        let msg = result.error || 'Registration failed. Please try again.';
+        if (msg.includes('only request this after 2 seconds')) {
+          msg = 'Signup request sent too quickly. Please wait a few seconds and try again.';
+        } else if (msg.includes('Email address') && msg.includes('invalid')) {
+          msg = 'The email format is invalid, or email signups are restricted in Supabase Auth settings.';
+        }
+        setError(msg);
+      }
+    } else {
+      // Sign In Logic
+      if (!email || !password) {
+        setError('Please fill in all credentials.');
+        return;
+      }
+      
+      setError('');
+      setLoading(true);
+      const result = await login(email, password);
+      setLoading(false);
+      
+      if (!result.success) {
+        let msg = result.error || 'Login failed. Please check credentials.';
+        if (msg.includes('Email not confirmed')) {
+          msg = 'Email not confirmed. Please check your verification email, or disable "Confirm email" in your Supabase Auth provider settings.';
+        }
+        setError(msg);
+      }
     }
   };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -54,7 +116,7 @@ export const LoginScreen = () => {
           </View>
 
           <Card style={styles.loginCard}>
-            <Text style={styles.cardTitle}>Sign In</Text>
+            <Text style={styles.cardTitle}>{isSignUp ? 'Create New Account' : 'Sign In'}</Text>
             
             {error ? (
               <View style={styles.errorAlert}>
@@ -62,6 +124,17 @@ export const LoginScreen = () => {
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
+
+            {isSignUp && (
+              <Input
+                label="Full Name / Representative"
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter your name"
+                icon="person-outline"
+                onClear={() => setName('')}
+              />
+            )}
 
             <Input
               label="Email Address"
@@ -77,18 +150,60 @@ export const LoginScreen = () => {
               label="Password"
               value={password}
               onChangeText={setPassword}
-              placeholder="Enter your password"
+              placeholder={isSignUp ? "Create a password (min 6 chars)" : "Enter your password"}
               icon="lock-closed-outline"
               secureTextEntry
               onClear={() => setPassword('')}
             />
 
+            {isSignUp && (
+              <Input
+                label="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm your password"
+                icon="shield-checkmark-outline"
+                secureTextEntry
+                onClear={() => setConfirmPassword('')}
+              />
+            )}
+
+            {isSignUp && (
+              <View style={styles.roleContainer}>
+                <Text style={styles.roleLabel}>Account Role</Text>
+                <View style={styles.rolePillsRow}>
+                  <TouchableOpacity
+                    style={[styles.rolePill, role === 'user' && styles.rolePillActive]}
+                    onPress={() => setRole('user')}
+                  >
+                    <Text style={[styles.rolePillText, role === 'user' && styles.rolePillTextActive]}>
+                      Sales Desk
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.rolePill, role === 'admin' && styles.rolePillActive]}
+                    onPress={() => setRole('admin')}
+                  >
+                    <Text style={[styles.rolePillText, role === 'admin' && styles.rolePillTextActive]}>
+                      Proprietor (Admin)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             <Button
-              title="Authenticate Account"
-              onPress={handleLogin}
+              title={isSignUp ? "Register Account" : "Authenticate Account"}
+              onPress={handleSubmit}
               loading={loading}
               style={styles.loginButton}
             />
+
+            <TouchableOpacity style={styles.modeSwitchBtn} onPress={handleToggleMode}>
+              <Text style={styles.modeSwitchText}>
+                {isSignUp ? "Already have an account? Sign In" : "Need a new account? Create Account"}
+              </Text>
+            </TouchableOpacity>
           </Card>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -175,5 +290,49 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: SPACING.sm,
     flex: 1,
+  },
+  roleContainer: {
+    marginBottom: SPACING.md,
+  },
+  roleLabel: {
+    ...TYPOGRAPHY.label,
+    marginBottom: SPACING.xs,
+    color: COLORS.primaryLight,
+  },
+  rolePillsRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  rolePill: {
+    flex: 1,
+    height: 40,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rolePillActive: {
+    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    borderColor: COLORS.secondary,
+  },
+  rolePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  rolePillTextActive: {
+    color: COLORS.secondary,
+  },
+  modeSwitchBtn: {
+    marginTop: SPACING.lg,
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+  },
+  modeSwitchText: {
+    fontSize: 13,
+    color: COLORS.secondary,
+    fontWeight: '700',
   },
 });
