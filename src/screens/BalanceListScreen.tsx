@@ -127,6 +127,35 @@ export const BalanceListScreen = () => {
     );
   };
 
+  const handleMarkAsUnpaid = (invoiceId: string, invoiceNumber: string) => {
+    Alert.alert(
+      'Mark as Unpaid',
+      `Are you sure you want to mark invoice ${invoiceNumber} as unpaid?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark Unpaid',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const { error } = await db.updateInvoiceStatus(invoiceId, 'balance');
+              if (error) {
+                Alert.alert('Database Error', 'Failed to update payment status.');
+              } else {
+                Alert.alert('Success', 'Invoice status updated to Balance Due.');
+                fetchBalanceInvoices();
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'An unexpected error occurred.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const unpaidCount = invoices.filter((inv) => inv.status === 'balance').length;
   const styles = getStyles(colors, isDarkMode);
 
@@ -202,9 +231,18 @@ export const BalanceListScreen = () => {
                     {formatCurrency(item.total)}
                   </Text>
                   {item.status === 'paid' ? (
-                    <View style={[styles.paidBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                      <Ionicons name="checkmark-circle" size={13} color={colors.success} />
-                      <Text style={[styles.paidBadgeText, { color: colors.success }]}>Paid</Text>
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                      <View style={[styles.paidBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                        <Ionicons name="checkmark-circle" size={13} color={colors.success} />
+                        <Text style={[styles.paidBadgeText, { color: colors.success }]}>Paid</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.markUnpaidBtn, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}
+                        onPress={() => handleMarkAsUnpaid(item.id, item.invoice_number)}
+                      >
+                        <Ionicons name="close-circle-outline" size={11} color={colors.danger} />
+                        <Text style={[styles.markUnpaidText, { color: colors.danger }]}>Mark Unpaid</Text>
+                      </TouchableOpacity>
                     </View>
                   ) : (
                     <TouchableOpacity
@@ -337,6 +375,18 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     gap: 4,
   },
   paidBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  markUnpaidBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.xs,
+    gap: 4,
+  },
+  markUnpaidText: {
     fontSize: 10,
     fontWeight: '700',
   },

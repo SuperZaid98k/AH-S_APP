@@ -92,6 +92,64 @@ export const InvoiceDetailsScreen = () => {
     }
   };
 
+  const handleMarkAsPaid = (invoiceId: string, invoiceNumber: string) => {
+    Alert.alert(
+      'Mark as Paid',
+      `Are you sure you want to mark invoice ${invoiceNumber} as fully paid?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark Paid',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const { error } = await db.updateInvoiceStatus(invoiceId, 'paid');
+              if (error) {
+                Alert.alert('Database Error', 'Failed to update payment status.');
+              } else {
+                Alert.alert('Success', 'Invoice status updated to Paid.');
+                fetchInvoiceDetails();
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'An unexpected error occurred.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMarkAsUnpaid = (invoiceId: string, invoiceNumber: string) => {
+    Alert.alert(
+      'Mark as Unpaid',
+      `Are you sure you want to mark invoice ${invoiceNumber} as unpaid?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark Unpaid',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const { error } = await db.updateInvoiceStatus(invoiceId, 'balance');
+              if (error) {
+                Alert.alert('Database Error', 'Failed to update payment status.');
+              } else {
+                Alert.alert('Success', 'Invoice status updated to Balance Due.');
+                fetchInvoiceDetails();
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'An unexpected error occurred.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
@@ -149,16 +207,35 @@ export const InvoiceDetailsScreen = () => {
               <Text style={styles.bannerMetaLabel}>INVOICE STATEMENT</Text>
               <Text style={styles.bannerInvoiceNum}>{invoice.invoice_number}</Text>
             </View>
-            <View style={[
-              styles.statusBadge,
-              { backgroundColor: invoice.status === 'balance' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }
-            ]}>
-              <Text style={[
-                styles.statusBadgeText,
-                { color: invoice.status === 'balance' ? colors.danger : colors.success }
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <View style={[
+                styles.statusBadge,
+                { backgroundColor: invoice.status === 'balance' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }
               ]}>
-                {invoice.status === 'balance' ? 'BALANCE DUE' : 'PAID'}
-              </Text>
+                <Text style={[
+                  styles.statusBadgeText,
+                  { color: invoice.status === 'balance' ? colors.danger : colors.success }
+                ]}>
+                  {invoice.status === 'balance' ? 'BALANCE DUE' : 'PAID'}
+                </Text>
+              </View>
+              {invoice.status === 'paid' ? (
+                <TouchableOpacity
+                  style={styles.smallMarkUnpaidBtn}
+                  onPress={() => handleMarkAsUnpaid(invoice.id, invoice.invoice_number)}
+                >
+                  <Ionicons name="close-circle-outline" size={11} color={colors.danger} />
+                  <Text style={[styles.smallMarkUnpaidText, { color: colors.danger }]}>Mark Unpaid</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.smallMarkPaidBtn}
+                  onPress={() => handleMarkAsPaid(invoice.id, invoice.invoice_number)}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={11} color={colors.success} />
+                  <Text style={[styles.smallMarkPaidText, { color: colors.success }]}>Mark Paid</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -181,6 +258,11 @@ export const InvoiceDetailsScreen = () => {
             <Text style={[styles.bannerFooterText, { color: colors.textMuted }]}>
               Billed By: {invoice.created_by === 'usr_admin' || invoice.created_by?.includes('admin') ? 'Proprietor Desk' : 'Sales Desk'}
             </Text>
+            {invoice.status === 'paid' && invoice.paid_at && (
+              <Text style={[styles.bannerFooterText, { color: colors.success, fontWeight: '700' }]}>
+                Settled: {formatDate(invoice.paid_at)}
+              </Text>
+            )}
           </View>
         </Card>
 
@@ -267,6 +349,8 @@ export const InvoiceDetailsScreen = () => {
             <Text style={styles.grandValue}>{formatCurrency(invoice.total)}</Text>
           </View>
         </Card>
+
+
 
         {/* Export / Share Actions */}
         <View style={styles.actionsContainer}>
@@ -511,6 +595,32 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  smallMarkUnpaidBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    gap: 4,
+  },
+  smallMarkUnpaidText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  smallMarkPaidBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    gap: 4,
+  },
+  smallMarkPaidText: {
+    fontSize: 9,
+    fontWeight: '700',
   },
 });
 
