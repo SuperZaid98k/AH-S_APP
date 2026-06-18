@@ -44,13 +44,16 @@ export const BalanceListScreen = () => {
     try {
       const { data, error } = await db.getInvoices(userProfile.role, userProfile.id);
       if (!error && data) {
-        // Filter for balance invoices only
-        const balanceOnly = data.filter((inv: any) => inv.status === 'balance');
-        setInvoices(balanceOnly);
-        setFilteredInvoices(balanceOnly);
+        // Filter for balance invoices or ones that have been settled (were balance, now paid with a paid_at date)
+        const ledgerInvoices = data.filter(
+          (inv: any) => inv.status === 'balance' || (inv.status === 'paid' && inv.paid_at)
+        );
+        setInvoices(ledgerInvoices);
+        setFilteredInvoices(ledgerInvoices);
 
-        // Sum outstanding total
-        const total = balanceOnly.reduce((sum: number, inv: any) => sum + Number(inv.total), 0);
+        // Sum outstanding total (only sum the ones that are still status === 'balance')
+        const unpaidOnly = ledgerInvoices.filter((inv: any) => inv.status === 'balance');
+        const total = unpaidOnly.reduce((sum: number, inv: any) => sum + Number(inv.total), 0);
         setTotalOutstanding(total);
       }
     } catch (e) {
@@ -124,6 +127,7 @@ export const BalanceListScreen = () => {
     );
   };
 
+  const unpaidCount = invoices.filter((inv) => inv.status === 'balance').length;
   const styles = getStyles(colors, isDarkMode);
 
   return (
@@ -132,7 +136,7 @@ export const BalanceListScreen = () => {
       <Card style={styles.outstandingCard} variant="premium">
         <Text style={styles.outstandingLabel}>TOTAL OUTSTANDING BALANCE</Text>
         <Text style={styles.outstandingVal}>{formatCurrency(totalOutstanding)}</Text>
-        <Text style={styles.outstandingSub}>Outstanding dues across {invoices.length} billing statements</Text>
+        <Text style={styles.outstandingSub}>Outstanding dues across {unpaidCount} billing statements</Text>
       </Card>
 
       {/* Search Header */}
@@ -170,7 +174,10 @@ export const BalanceListScreen = () => {
           }
           renderItem={({ item }) => (
             <Card
-              style={styles.invoiceCard}
+              style={[
+                styles.invoiceCard,
+                item.status === 'paid' && { opacity: 0.85 }
+              ]}
               onPress={() => navigation.navigate('InvoiceDetails', { invoiceId: item.id })}
             >
               <View style={styles.cardHeader}>
@@ -184,18 +191,30 @@ export const BalanceListScreen = () => {
                   <Text style={[styles.invoiceDate, { color: colors.textMuted }]}>
                     Dues since: {formatDate(item.date)}
                   </Text>
+                  {item.status === 'paid' && item.paid_at && (
+                    <Text style={[styles.paidDate, { color: colors.success }]}>
+                      Paid on: {formatDate(item.paid_at)}
+                    </Text>
+                  )}
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.invoiceTotal, { color: colors.danger }]}>
+                  <Text style={[styles.invoiceTotal, { color: item.status === 'paid' ? colors.success : colors.danger }]}>
                     {formatCurrency(item.total)}
                   </Text>
-                  <TouchableOpacity
-                    style={[styles.markPaidBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}
-                    onPress={() => handleMarkAsPaid(item.id, item.invoice_number)}
-                  >
-                    <Ionicons name="checkmark-circle-outline" size={13} color={colors.success} />
-                    <Text style={[styles.markPaidText, { color: colors.success }]}>Mark Paid</Text>
-                  </TouchableOpacity>
+                  {item.status === 'paid' ? (
+                    <View style={[styles.paidBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                      <Ionicons name="checkmark-circle" size={13} color={colors.success} />
+                      <Text style={[styles.paidBadgeText, { color: colors.success }]}>Paid</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.markPaidBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}
+                      onPress={() => handleMarkAsPaid(item.id, item.invoice_number)}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={13} color={colors.success} />
+                      <Text style={[styles.markPaidText, { color: colors.success }]}>Mark Paid</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </Card>
@@ -300,6 +319,24 @@ const getStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     gap: 4,
   },
   markPaidText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  paidDate: {
+    ...TYPOGRAPHY.caption,
+    color: colors.success,
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  paidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.xs,
+    gap: 4,
+  },
+  paidBadgeText: {
     fontSize: 10,
     fontWeight: '700',
   },

@@ -360,17 +360,18 @@ export const db = {
   },
 
   async updateInvoiceStatus(invoiceId: string, status: 'paid' | 'balance') {
+    const paidAt = status === 'paid' ? new Date().toISOString() : null;
     if (!supabaseUrl) {
       const mockInvoices = await AsyncStorage.getItem('@mock_invoices');
       const invoices = mockInvoices ? JSON.parse(mockInvoices) : [];
       const updated = invoices.map((inv: any) =>
-        inv.id === invoiceId ? { ...inv, status } : inv
+        inv.id === invoiceId ? { ...inv, status, paid_at: paidAt } : inv
       );
       await AsyncStorage.setItem('@mock_invoices', JSON.stringify(updated));
       return { error: null };
     }
 
-    return supabase.from('invoices').update({ status }).eq('id', invoiceId);
+    return supabase.from('invoices').update({ status, paid_at: paidAt }).eq('id', invoiceId);
   },
 };
 
