@@ -37,12 +37,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkSession = async () => {
       try {
         if (isSupabaseConfigured) {
-          // Listen to auth changes
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user) {
+          // Try to get the initial session to check connectivity
+          try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) {
+              console.warn('Initial session check error:', error);
+            } else if (session?.user) {
               setUser(session.user);
-              // Fetch user profile
-              const { data: profile, error } = await db.getProfile(session.user.id);
+              const { data: profile } = await db.getProfile(session.user.id);
               if (profile) {
                 setUserProfile({
                   id: profile.id,
@@ -51,24 +53,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   email: session.user.email,
                 });
               } else {
-                // If profile doesn't exist, create default
-                const defaultProfile = {
+                setUserProfile({
                   id: session.user.id,
                   name: session.user.email?.split('@')[0] || 'User',
-                  role: 'user' as const,
-                };
-                setUserProfile({ ...defaultProfile, email: session.user.email });
+                  role: 'user',
+                  email: session.user.email,
+                });
               }
               setIsAuthenticated(true);
-            } else {
-              setUser(null);
-              setUserProfile(null);
-              setIsAuthenticated(false);
             }
-            setIsLoading(false);
+          } catch (netError) {
+            console.warn('Supabase initial connection warning (likely offline):', netError);
+          }
+
+          // Listen to auth changes
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            try {
+              if (session?.user) {
+                setUser(session.user);
+                const { data: profile } = await db.getProfile(session.user.id);
+                if (profile) {
+                  setUserProfile({
+                    id: profile.id,
+                    name: profile.name,
+                    role: profile.role as 'admin' | 'user',
+                    email: session.user.email,
+                  });
+                } else {
+                  setUserProfile({
+                    id: session.user.id,
+                    name: session.user.email?.split('@')[0] || 'User',
+                    role: 'user',
+                    email: session.user.email,
+                  });
+                }
+                setIsAuthenticated(true);
+              } else {
+                setUser(null);
+                setUserProfile(null);
+                setIsAuthenticated(false);
+              }
+            } catch (err) {
+              console.error('Auth state change callback failed:', err);
+            } finally {
+              setIsLoading(false);
+            }
           });
 
+          // Safe fallback: Unblock the startup screen after a 2-second timeout
+          const safeTimer = setTimeout(() => {
+            setIsLoading(false);
+          }, 2000);
+
           return () => {
+            clearTimeout(safeTimer);
             subscription.unsubscribe();
           };
         } else {
