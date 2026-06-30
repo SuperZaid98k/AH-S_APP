@@ -20,7 +20,7 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../styles/theme';
 export const LoginScreen = () => {
   const { login, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
-  
+
   // Shared States
   const [phoneOrEmail, setPhoneOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,7 +48,7 @@ export const LoginScreen = () => {
         setError('Please fill in all registration fields.');
         return;
       }
-      
+
       // Validate phone number format (must contain at least 10 digits)
       const digitsOnly = phoneOrEmail.replace(/[^0-9]/g, '');
       if (digitsOnly.length < 10) {
@@ -64,12 +64,12 @@ export const LoginScreen = () => {
         setError('Password must be at least 6 characters long.');
         return;
       }
-      
+
       setError('');
       setLoading(true);
       const result = await signUp(phoneOrEmail, password, name, role);
       setLoading(false);
-      
+
       if (result.success) {
         Alert.alert(
           'Account Created',
@@ -91,12 +91,12 @@ export const LoginScreen = () => {
         setError('Please fill in all credentials.');
         return;
       }
-      
+
       setError('');
       setLoading(true);
       const result = await login(phoneOrEmail, password);
       setLoading(false);
-      
+
       if (!result.success) {
         let msg = result.error || 'Login failed. Please check credentials.';
         if (msg.includes('Email not confirmed')) {
@@ -121,12 +121,12 @@ export const LoginScreen = () => {
             </View>
             <Text style={styles.title}>AH&S Billing</Text>
             <Text style={styles.subtitle}>Ahmad Hasan & Sons</Text>
-            <Text style={styles.tagline}>Towel, Lungi & Rumal Wholesalers</Text>
+            <Text style={styles.tagline}>Towel, Lungi & Rumal Wholesalers 1</Text>
           </View>
 
           <Card style={styles.loginCard}>
             <Text style={styles.cardTitle}>{isSignUp ? 'Create New Account' : 'Sign In'}</Text>
-            
+
             {error ? (
               <View style={styles.errorAlert}>
                 <Ionicons name="alert-circle" size={20} color={COLORS.danger} />
