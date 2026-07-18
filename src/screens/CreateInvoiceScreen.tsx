@@ -71,6 +71,7 @@ export const CreateInvoiceScreen = () => {
 
   // Invoice Items State
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   
   // Manual Product Form States
   const [manualProdName, setManualProdName] = useState('');
@@ -232,13 +233,29 @@ export const CreateInvoiceScreen = () => {
       total: qty * rate,
     };
 
-    setItems([...items, newItem]);
+    if (editingIndex !== null) {
+      const updated = [...items];
+      updated[editingIndex] = newItem;
+      setItems(updated);
+      setEditingIndex(null);
+    } else {
+      setItems([...items, newItem]);
+    }
     
     // Clear item inputs for next addition
     setManualProdName('');
     setManualProdBrand('');
     setManualProdQty('1');
     setManualProdRate('');
+  };
+
+  const handleEditItem = (index: number) => {
+    const item = items[index];
+    setEditingIndex(index);
+    setManualProdName(item.product_name);
+    setManualProdBrand(item.brand || '');
+    setManualProdQty(item.quantity.toString());
+    setManualProdRate(item.price.toString());
   };
 
   const handleQtySubmit = () => {
@@ -260,6 +277,15 @@ export const CreateInvoiceScreen = () => {
   const handleDeleteItem = (index: number) => {
     const updated = items.filter((_, idx) => idx !== index);
     setItems(updated);
+    if (editingIndex === index) {
+      setEditingIndex(null);
+      setManualProdName('');
+      setManualProdBrand('');
+      setManualProdQty('1');
+      setManualProdRate('');
+    } else if (editingIndex !== null && editingIndex > index) {
+      setEditingIndex(editingIndex - 1);
+    }
   };
 
   const handleSaveInvoice = async () => {
@@ -456,6 +482,7 @@ export const CreateInvoiceScreen = () => {
                   key={index}
                   item={item}
                   onDelete={() => handleDeleteItem(index)}
+                  onEdit={() => handleEditItem(index)}
                 />
               ))}
             </View>
@@ -463,7 +490,9 @@ export const CreateInvoiceScreen = () => {
         </Card>
 
         {/* Direct Product Entry Form */}
-        <Text style={styles.sectionTitle}>Add Product Item</Text>
+        <Text style={styles.sectionTitle}>
+          {editingIndex !== null ? 'Edit Product Item' : 'Add Product Item'}
+        </Text>
         <Card style={styles.customerCard}>
           <Input
             label="Product Name / Description (Optional)"
@@ -521,13 +550,38 @@ export const CreateInvoiceScreen = () => {
           ) : null}
 
 
-          <Button
-            title="Add Product to Bill"
-            variant="outline"
-            icon="add-circle-outline"
-            onPress={handleAddItem}
-            style={{ marginTop: SPACING.sm }}
-          />
+          {editingIndex !== null ? (
+            <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm }}>
+              <Button
+                title="Cancel Edit"
+                variant="outline"
+                icon="close-outline"
+                onPress={() => {
+                  setEditingIndex(null);
+                  setManualProdName('');
+                  setManualProdBrand('');
+                  setManualProdQty('1');
+                  setManualProdRate('');
+                }}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Update Product"
+                variant="secondary"
+                icon="checkmark-circle-outline"
+                onPress={handleAddItem}
+                style={{ flex: 1.5 }}
+              />
+            </View>
+          ) : (
+            <Button
+              title="Add Product to Bill"
+              variant="outline"
+              icon="add-circle-outline"
+              onPress={handleAddItem}
+              style={{ marginTop: SPACING.sm }}
+            />
+          )}
         </Card>
 
         {/* Financials & Toggles Block */}

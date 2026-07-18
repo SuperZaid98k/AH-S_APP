@@ -16,12 +16,14 @@ interface InvoiceItem {
 interface InvoiceItemRowProps {
   item: InvoiceItem;
   onDelete: () => void;
+  onEdit?: () => void;
   showDelete?: boolean;
 }
 
 export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   item,
   onDelete,
+  onEdit,
   showDelete = true,
 }) => {
   const { colors, isDarkMode } = useTheme();
@@ -47,15 +49,26 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
       
       <View style={styles.rightContent}>
         <Text style={[styles.total, { color: colors.text }]}>{formatCurrency(item.total)}</Text>
-        {showDelete && (
-          <TouchableOpacity
-            onPress={onDelete}
-            style={styles.deleteButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.danger} />
-          </TouchableOpacity>
-        )}
+        <View style={styles.actionsContainer}>
+          {onEdit && (
+            <TouchableOpacity
+              onPress={onEdit}
+              style={styles.editButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="pencil-outline" size={18} color={colors.secondary} />
+            </TouchableOpacity>
+          )}
+          {showDelete && (
+            <TouchableOpacity
+              onPress={onDelete}
+              style={styles.deleteButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -105,6 +118,14 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.h3,
     fontSize: 15,
     marginRight: SPACING.md,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editButton: {
+    padding: SPACING.xs,
   },
   deleteButton: {
     padding: SPACING.xs,

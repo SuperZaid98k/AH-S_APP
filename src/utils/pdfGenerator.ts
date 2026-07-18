@@ -97,12 +97,18 @@ export const pdfGenerator = {
             text-align: right;
             vertical-align: top;
           }
+          .header-brand-center {
+            text-align: center;
+            width: 100%;
+            margin-bottom: 15px;
+          }
           .brand-title {
             font-size: 26px;
             font-weight: 800;
             color: #1e293b;
             letter-spacing: 1px;
             margin: 0 0 5px 0;
+            text-align: center;
           }
           .brand-subtitle {
             font-size: 11px;
@@ -266,16 +272,19 @@ export const pdfGenerator = {
       </head>
       <body>
         <div class="invoice-box">
+          <!-- Top Centered Brand Title -->
+          <div class="header-brand-center">
+            <div class="brand-title">AH&S BILLING</div>
+          </div>
           <!-- Header block -->
           <table class="header-table">
             <tr>
               <td class="header-left">
-                <div class="brand-title">AH&S BILLING</div>
-                <div class="brand-subtitle">Ahmad Hasan & Sons</div>
+                <div class="brand-subtitle">Ahmad Hasan & Sons Handloom</div>
                 <div class="company-details">
-                  Wholesale & Retail of Towel, Lungi and Rumal<br>
+                  Wholesale & Retail of Towel, Lungi, Rumal, Gamcha, Shawl and etc<br>
                   Proprietor: Ahmad Hasan & Sons<br>
-                  Contact: +91 9830000000 | support@ahs.com
+                  Contact: +91 9309732378 
                 </div>
               </td>
               <td class="header-right">
@@ -335,27 +344,25 @@ export const pdfGenerator = {
               <td class="summary-value">${formatCurrency(invoice.subtotal)}</td>
             </tr>
             
-            ${
-              hasDiscount
-                ? `
+            ${hasDiscount
+        ? `
             <tr>
               <td class="summary-label">Discount</td>
               <td class="summary-value" style="color: #e11d48;">-${formatCurrency(invoice.discount)}</td>
             </tr>
             `
-                : ''
-            }
+        : ''
+      }
 
-            ${
-              hasGst
-                ? `
+            ${hasGst
+        ? `
             <tr>
               <td class="summary-label">GST (${invoice.gst_rate}%)</td>
               <td class="summary-value">+${formatCurrency(invoice.gst_amount)}</td>
             </tr>
             `
-                : ''
-            }
+        : ''
+      }
 
             <tr>
               <td class="summary-label" style="font-weight: 700; color: #1e293b;">Grand Total</td>
@@ -365,11 +372,11 @@ export const pdfGenerator = {
 
           <!-- Signature & Footer -->
           <div class="signature-box">
-            For Ahmad Hasan & Sons
+            For Ahmad Hasan & Sons 
           </div>
 
           <div class="footer-section">
-            <div class="footer-thanks">Thank You For Your Business!</div>
+            <div class="footer-thanks">Thank You For Your Visit!</div>
             <div>This is a computer-generated invoice and requires no physical signature.</div>
           </div>
         </div>

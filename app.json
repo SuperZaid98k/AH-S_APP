@@ -30,6 +30,15 @@
     "owner": "huzzzaif",
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d6dda3c7-267a-4392-8cd6-6708f61bf5e1",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 3000
+    }
   }
 }

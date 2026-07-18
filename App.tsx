@@ -3,6 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Alert } from 'react-native';
+import * as Updates from 'expo-updates';
 
 // Context Providers
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -130,6 +132,31 @@ const RootNavigator = () => {
 
 const AppContent = () => {
   const { isDarkMode } = useSettings();
+  const { isUpdatePending } = Updates.useUpdates();
+
+  React.useEffect(() => {
+    if (isUpdatePending) {
+      Alert.alert(
+        'Update Available',
+        'A new version of the app is ready. Would you like to restart the app to apply it now?',
+        [
+          { text: 'Later', style: 'cancel' },
+          {
+            text: 'Restart Now',
+            onPress: async () => {
+              try {
+                await Updates.reloadAsync();
+              } catch (e) {
+                console.error('Failed to reload app:', e);
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    }
+  }, [isUpdatePending]);
+
   return (
     <NavigationContainer>
       <RootNavigator />

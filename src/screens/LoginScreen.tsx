@@ -121,7 +121,7 @@ export const LoginScreen = () => {
             </View>
             <Text style={styles.title}>AH&S Billing</Text>
             <Text style={styles.subtitle}>Ahmad Hasan & Sons</Text>
-            <Text style={styles.tagline}>Towel, Lungi & Rumal Wholesalers 1</Text>
+            <Text style={styles.tagline}>Towel, Lungi, Rumal,Gamcha & Shawl Wholesalers</Text>
           </View>
 
           <Card style={styles.loginCard}>

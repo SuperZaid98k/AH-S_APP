@@ -38,16 +38,21 @@ export const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { userProfile } = useAuth();
   const { colors, isDarkMode } = useTheme();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  
+
   // Analytics State
   const [totalSales, setTotalSales] = useState(0);
   const [invoiceCount, setInvoiceCount] = useState(0);
   const [outstandingBalance, setOutstandingBalance] = useState(0);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [salesByUser, setSalesByUser] = useState<Record<string, { name: string; amount: number; count: number }>>({});
+
+  // Calculator State
+  const [calcDisplay, setCalcDisplay] = useState('');
+  const [calcResult, setCalcResult] = useState('');
+  const [isCalcExpanded, setIsCalcExpanded] = useState(false);
 
 
   // Configure Hamburger Menu icon in the Navigation Header
@@ -67,11 +72,11 @@ export const DashboardScreen = () => {
 
   const loadDashboardData = useCallback(async () => {
     if (!userProfile) return;
-    
+
     setRefreshing(true);
     try {
       const { data: invoices } = await db.getInvoices(userProfile.role, userProfile.id);
-      
+
       if (invoices && invoices.length > 0) {
         const total = invoices.reduce((sum: number, inv: any) => sum + Number(inv.total), 0);
         setTotalSales(total);
@@ -88,10 +93,10 @@ export const DashboardScreen = () => {
         // Calculate sales breakdown by user if admin
         if (userProfile.role === 'admin') {
           const breakdown: typeof salesByUser = {};
-          
+
           for (const inv of invoices) {
             const userKey = inv.created_by || 'unknown';
-            
+
             let sellerName = 'Sales Desk';
             if (userKey === 'usr_admin' || userKey.includes('admin')) {
               sellerName = 'Ahmad Hasan (Admin)';
@@ -123,6 +128,61 @@ export const DashboardScreen = () => {
     }
   }, [userProfile]);
 
+  const handleCalcPress = (value: string) => {
+    if (value === 'C') {
+      setCalcDisplay('');
+      setCalcResult('');
+    } else if (value === '⌫') {
+      setCalcDisplay(prev => {
+        const next = prev.slice(0, -1);
+        try {
+          if (next.trim() === '') {
+            setCalcResult('');
+          } else {
+            const sanitized = next.replace(/×/g, '*').replace(/÷/g, '/');
+            if (/^[0-9+\-*/().\s]+$/.test(sanitized)) {
+              const evalResult = Function(`"use strict"; return (${sanitized})`)();
+              if (evalResult !== undefined && !isNaN(evalResult)) {
+                setCalcResult(evalResult.toString());
+              }
+            }
+          }
+        } catch (_) {}
+        return next;
+      });
+    } else if (value === '=') {
+      if (calcDisplay.trim() === '') return;
+      try {
+        const sanitized = calcDisplay.replace(/×/g, '*').replace(/÷/g, '/');
+        if (/^[0-9+\-*/().\s]+$/.test(sanitized)) {
+          const evalResult = Function(`"use strict"; return (${sanitized})`)();
+          if (evalResult !== undefined && !isNaN(evalResult)) {
+            setCalcResult(evalResult.toString());
+            setCalcDisplay(evalResult.toString());
+          }
+        } else {
+          setCalcResult('Error');
+        }
+      } catch (e) {
+        setCalcResult('Error');
+      }
+    } else {
+      setCalcDisplay(prev => {
+        const next = prev + value;
+        try {
+          const sanitized = next.replace(/×/g, '*').replace(/÷/g, '/');
+          if (/^[0-9+\-*/().\s]+$/.test(sanitized)) {
+            const evalResult = Function(`"use strict"; return (${sanitized})`)();
+            if (evalResult !== undefined && !isNaN(evalResult)) {
+              setCalcResult(evalResult.toString());
+            }
+          }
+        } catch (_) {}
+        return next;
+      });
+    }
+  };
+
 
   useFocusEffect(
     useCallback(() => {
@@ -135,11 +195,11 @@ export const DashboardScreen = () => {
       <ScrollView
         contentContainerStyle={styles.scrollBody}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={loadDashboardData} 
-            tintColor={colors.secondary} 
-            colors={[colors.secondary]} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={loadDashboardData}
+            tintColor={colors.secondary}
+            colors={[colors.secondary]}
           />
         }
       >
@@ -158,7 +218,7 @@ export const DashboardScreen = () => {
 
             {/* Description Slogan */}
             <Text style={styles.brandSlogan}>
-              Excellence in Towels, Lungis, and Rumals. Woven with tradition, made with pride.
+              Excellence in Towels, Lungis, Rumals, Gamcha & Shawl. Woven with tradition, made with pride.
             </Text>
 
             {/* Primary Action Button */}
@@ -197,7 +257,7 @@ export const DashboardScreen = () => {
 
         {/* QUICK MENU: Terminal Rows */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Actions</Text>
-        
+
         {/* Billing Terminal Row: Matches Mockup cart row */}
         <TouchableOpacity
           style={[styles.terminalRow, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
@@ -227,7 +287,7 @@ export const DashboardScreen = () => {
               <Ionicons name="receipt-outline" size={20} color="#FFFFFF" />
             </View>
             <View>
-              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Ledger Book</Text>
+              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Invoice History</Text>
               <Text style={styles.terminalRowSub}>INVOICE LEDGER & SEARCH</Text>
             </View>
           </View>
@@ -263,7 +323,7 @@ export const DashboardScreen = () => {
               <Ionicons name="wallet-outline" size={20} color="#FFFFFF" />
             </View>
             <View>
-              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Balance Ledger</Text>
+              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Balance Invoice</Text>
               <Text style={styles.terminalRowSub}>
                 OUTSTANDING BALANCE: {formatCurrency(outstandingBalance)}
               </Text>
@@ -274,6 +334,81 @@ export const DashboardScreen = () => {
 
 
 
+
+        {/* Quick Calculator Row / Widget */}
+        <TouchableOpacity
+          style={[styles.terminalRow, { backgroundColor: colors.cardBg, borderColor: colors.border, marginBottom: isCalcExpanded ? 0 : SPACING.md }]}
+          onPress={() => setIsCalcExpanded(!isCalcExpanded)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.terminalRowLeft}>
+            <View style={[styles.terminalCartIconBox, { backgroundColor: colors.secondary }]}>
+              <Ionicons name="calculator-outline" size={20} color="#000000" />
+            </View>
+            <View>
+              <Text style={[styles.terminalRowTitle, { color: colors.text }]}>Quick Calculator</Text>
+              <Text style={styles.terminalRowSub}>INSTANT BILL & TAX ESTIMATOR</Text>
+            </View>
+          </View>
+          <Ionicons name={isCalcExpanded ? "chevron-up" : "chevron-forward"} size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
+        {isCalcExpanded && (
+          <Card style={[styles.calcCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+            {/* Calculator Display */}
+            <View style={[styles.calcDisplayContainer, { backgroundColor: isDarkMode ? '#222' : '#F1F5F9' }]}>
+              <Text style={[styles.calcExprText, { color: colors.textMuted }]} numberOfLines={1}>
+                {calcDisplay || '0'}
+              </Text>
+              <Text style={[styles.calcResultText, { color: colors.text }]} numberOfLines={1}>
+                {calcResult || '0'}
+              </Text>
+            </View>
+
+            {/* Calculator Keypad */}
+            <View style={styles.calcKeypad}>
+              {[
+                ['C', '(', ')', '÷'],
+                ['7', '8', '9', '×'],
+                ['4', '5', '6', '-'],
+                ['1', '2', '3', '+'],
+                ['0', '.', '⌫', '='],
+              ].map((row, rIdx) => (
+                <View key={rIdx} style={styles.calcRow}>
+                  {row.map((btn) => {
+                    const isOperator = ['÷', '×', '-', '+', '='].includes(btn);
+                    const isClear = btn === 'C' || btn === '⌫';
+                    
+                    let btnBg = isDarkMode ? '#333' : '#E2E8F0';
+                    let textCol = colors.text;
+
+                    if (btn === '=') {
+                      btnBg = colors.secondary;
+                      textCol = '#000000';
+                    } else if (isOperator) {
+                      btnBg = isDarkMode ? '#2D3748' : '#EDF2F7';
+                      textCol = colors.secondary;
+                    } else if (isClear) {
+                      btnBg = isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(225, 29, 72, 0.1)';
+                      textCol = colors.danger;
+                    }
+
+                    return (
+                      <TouchableOpacity
+                        key={btn}
+                        style={[styles.calcBtn, { backgroundColor: btnBg }]}
+                        onPress={() => handleCalcPress(btn)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.calcBtnText, { color: textCol }]}>{btn}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          </Card>
+        )}
 
         {/* Recent Invoices list */}
         <View style={styles.recentSection}>
@@ -577,5 +712,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginRight: SPACING.sm,
+  },
+  calcCard: {
+    marginHorizontal: SPACING.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+  calcDisplayContainer: {
+    borderRadius: BORDER_RADIUS.sm,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minHeight: 70,
+  },
+  calcExprText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  calcResultText: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  calcKeypad: {
+    gap: SPACING.xs,
+  },
+  calcRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.xs,
+  },
+  calcBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: BORDER_RADIUS.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calcBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
